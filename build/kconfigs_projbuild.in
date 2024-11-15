@@ -1,0 +1,7 @@
+source "/home/zaske/esp/esp-idf/components/bootloader/Kconfig.projbuild"
+source "/home/zaske/esp/esp-idf/components/esp_app_format/Kconfig.projbuild"
+source "/home/zaske/esp/esp-idf/components/esp_rom/Kconfig.projbuild"
+source "/home/zaske/esp/esp-idf/components/esptool_py/Kconfig.projbuild"
+source "/home/zaske/esp/esp-idf/components/partition_table/Kconfig.projbuild"
+source "/home/zaske/Dokumente/Bachelorarbeit/Test1_BA_DIY_Power_PCB/main/Kconfig.projbuild"
+source "/home/zaske/Dokumente/Bachelorarbeit/Test1_BA_DIY_Power_PCB/components/ssd1306/Kconfig.projbuild"
