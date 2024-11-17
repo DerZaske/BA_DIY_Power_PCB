@@ -1,0 +1,13 @@
+# Ausschließen des Build-Ordners
+build/
+
+# Ausschließen von temporären Dateien
+*.tmp
+*.log
+
+# Ausschließen von VSCode spezifischen Dateien
+.vscode/
+
+# Ausschließen von CMake Build-Dateien
+CMakeFiles/
+CMakeCache.txt
