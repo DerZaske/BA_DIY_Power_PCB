@@ -8,6 +8,9 @@
 
 # Ausschließen von CMake Build-Dateien
 CMakeFiles/
+cmake-build-debug/
+build/
+
 CMakeCache.txt
 cmake-build-debug/.ninja_deps
 cmake-build-debug/.ninja_log
