@@ -134,6 +134,12 @@ uint32_t get_torque(adc_oneshot_unit_handle_t adc1_handle)
 
     return torque;
 }
+int32_t get_current_bridge(adc_oneshot_unit_handle_t adc1_handle, int ADC_pin){
+    int32_t adc_voltage = read_voltage(adc1_handle,ADC_pin);
+     ESP_LOGI("CurrentBridge", "ADC:%ld",adc_voltage);
+    int32_t current = ((adc_voltage- 142)/6.77)/0.007;
+    return current;
+}
 
 
 SSD1306_t *configure_OLED(const char *TAG)
@@ -223,59 +229,59 @@ void pwmStopAll(){
 }
 
 
-void U_V_start()
+void U_V_start(int duty)
 {   
     //HIN_V und LIN_U abschalten
     pwmStop(HIN_V_CH);
     gpio_set_level(CONFIG_LIN_U_GPIO, 0);
     //HIN_U und LIN_V einschalten     
-    pwmStart(HIN_U_CH, 512);
+    pwmStart(HIN_U_CH, duty);
     gpio_set_level(CONFIG_LIN_V_GPIO, 1);      
 }
-void V_U_start()
+void V_U_start(int duty)
 {
     //HIN_U und LIN_V abschalten
     pwmStop(HIN_U_CH);
     gpio_set_level(CONFIG_LIN_V_GPIO, 0);
     //HIN_V und LIN_U einschalten     
-    pwmStart(HIN_V_CH, 512);
+    pwmStart(HIN_V_CH, duty);
     gpio_set_level(CONFIG_LIN_U_GPIO, 1);  
 }
-void U_W_start()
+void U_W_start(int duty)
 {
     //HIN_W und LIN_U abschalten
     pwmStop(HIN_W_CH);
     gpio_set_level(CONFIG_LIN_U_GPIO, 0);
     //HIN_U und LIN_V einschalten     
-    pwmStart(HIN_W_CH, 512);
+    pwmStart(HIN_W_CH, duty);
     gpio_set_level(CONFIG_LIN_V_GPIO, 1);      
 }
-void W_U_start()
+void W_U_start(int duty)
 {
     //HIN_U und LIN_W abschalten
     pwmStop(HIN_U_CH);
     gpio_set_level(CONFIG_LIN_W_GPIO, 0);
     //HIN_U und LIN_V einschalten     
-    pwmStart(HIN_W_CH, 512);
+    pwmStart(HIN_W_CH, duty);
     gpio_set_level(CONFIG_LIN_U_GPIO, 1);     
 }
-void V_W_start()
+void V_W_start(int duty)
 {
     //HIN_U und LIN_W abschalten
     pwmStop(HIN_W_CH);
     gpio_set_level(CONFIG_LIN_V_GPIO, 0);
     //HIN_U und LIN_V einschalten     
-    pwmStart(HIN_V_CH, 512);
+    pwmStart(HIN_V_CH, duty);
     gpio_set_level(CONFIG_LIN_W_GPIO, 1);     
 }
 
-void W_V_start()
+void W_V_start(int duty)
 {
     //HIN_U und LIN_W abschalten
     pwmStop(HIN_V_CH);
     gpio_set_level(CONFIG_LIN_W_GPIO, 0);
     //HIN_U und LIN_V einschalten     
-    pwmStart(HIN_W_CH, 512);
+    pwmStart(HIN_W_CH, duty);
     gpio_set_level(CONFIG_LIN_V_GPIO, 1);     
 }
 
