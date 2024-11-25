@@ -13,6 +13,10 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include "ssd1306.h"
 #include "esp_adc/adc_oneshot.h"
+#include "driver/mcpwm_prelude.h"
+#include "soc/mcpwm_reg.h"
+#include "soc/mcpwm_struct.h"
+
 #define HIN_U_CH 0
 #define HIN_V_CH 1
 #define HIN_W_CH 2
@@ -40,6 +44,7 @@ void U_W_start(int duty);
 void W_U_start(int duty);
 void V_W_start(int duty);
 void W_V_start(int duty);
+void set_mcpwm();
 void parse_3pins(const char *TAG, const char *pin_string, int *pins);
 SSD1306_t *configure_OLED(const char *TAG);
 

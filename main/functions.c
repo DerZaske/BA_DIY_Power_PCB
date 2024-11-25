@@ -1,6 +1,10 @@
 
 #include "functions.h"
 adc_cali_handle_t cali_handle= NULL;
+
+/*############################################*/
+/*############### GPIO-Setup #################*/
+/*############################################*/
 void configure_GPIO_dir(const char *TAG)
 {
     /* reset every used GPIO-pin */
@@ -47,11 +51,12 @@ void configure_GPIO_dir(const char *TAG)
     
     gpio_set_direction(CONFIG_EXT_ENC_LEFT_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_EXT_ENC_RIGHT_GPIO, GPIO_MODE_INPUT);
-    gpio_set_direction(CONFIG_RFE_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_direction(CONFIG_RFE_GPIO, GPIO_MODE_INPUT);
     ESP_LOGI(TAG, "GPIO dirs configured for DIY power PCB");
 }
-// Globale Variable für die Kalibrierung
-
+/*############################################*/
+/*################ ADC-Setup #################*/
+/*############################################*/
 adc_oneshot_unit_handle_t configure_ADC1() 
 {
     adc_oneshot_unit_handle_t adc1_handle;
@@ -141,7 +146,9 @@ int32_t get_current_bridge(adc_oneshot_unit_handle_t adc1_handle, int ADC_pin){
     return current;
 }
 
-
+/*############################################*/
+/*############## Display-Setup ###############*/
+/*############################################*/
 SSD1306_t *configure_OLED(const char *TAG)
 {
     static SSD1306_t dev;
@@ -158,6 +165,9 @@ SSD1306_t *configure_OLED(const char *TAG)
     ssd1306_clear_screen(&dev, false);
     return &dev;
 }
+/*############################################*/
+/*################ PWM-Setup #################*/
+/*############################################*/
 
 void set_PWM_Timer()
 {
@@ -285,9 +295,43 @@ void W_V_start(int duty)
     gpio_set_level(CONFIG_LIN_V_GPIO, 1);     
 }
 
+/*############################################*/
+/*############### MCPWM-Setup ################*/
+/*############################################*/
+void set_mcpwm_U_V(){
+    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0A, CONFIG_HIN_U_GPIO);
+    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0B, CONFIG_LIN_U_GPIO);
+    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM1A, CONFIG_HIN_V_GPIO);
+    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM1B, CONFIG_LIN_V_GPIO);
 
-
-
+    mcpwm_config_t pwm_config_U = {
+        .frequency = 20000,
+        .cmpr_a = 50.0,
+        .cmpr_b = 50.0,
+        .counter_mode = MCPWM_UP_DOWN_COUNTER,
+        .duty_mode = MCPWM_DUTY_MODE_0,
+    };
+    //Initialisierung von Halbbrücke U (Timer 0)
+    mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config_U);
+     mcpwm_config_t pwm_config_V = {
+        .frequency = 20000,
+        .cmpr_a = 50.0,
+        .cmpr_b = 50.0,
+        .counter_mode = MCPWM_UP_DOWN_COUNTER,
+        .duty_mode = MCPWM_DUTY_MODE_0,
+    };
+    //Initialisierung von Halbbrücke V (Timer 1)
+    mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_1, &pwm_config_V);
+    mcpwm_sync_enable(MCPWM_UNIT_0, MCPWM_TIMER_1, MCPWM_SELECT_TIMER0_SYNC, 13);
+    
+    //Totzeit für Halbbrücke U
+    mcpwm_deadtime_enable(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_ACTIVE_HIGH_COMPLIMENT_MODE, 50, 50);//50ns steigende Flanke, 50ns fallende Flanke
+    //Totzeit für Halbbrücke V
+    mcpwm_deadtime_enable(MCPWM_UNIT_0, MCPWM_TIMER_1, MCPWM_ACTIVE_HIGH_COMPLIMENT_MODE, 50, 50); 
+}
+/*############################################*/
+/*################## MISC ####################*/
+/*############################################*/
 //Ausgelagert in Preprocessing python program, generate_pins_header.py
 void parse_3pins(const char *TAG, const char *pin_string, int *pins) {
     int pin_count = 0;  // Jetzt ein Integer, keine Null-Pointer-Dereferenzierung

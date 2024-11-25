@@ -13,7 +13,7 @@ void app_main(void)
     int32_t Current_V = 0;
     int32_t Current_W = 0;
     int32_t Current_bridge =0;
-    int duty = 512;
+    float duty = 0.0;
     char display_message[50]; // Puffer für die Nachricht
     ESP_LOGI(TAG, "Test");
     configure_GPIO_dir(TAG);
@@ -22,7 +22,7 @@ void app_main(void)
     
     set_PWM_Timer();
     set_PWM();
-    int i =0;
+    int i =3;
     
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
     while (1) {
@@ -39,34 +39,34 @@ void app_main(void)
         switch (i)
         {
         case 0:
-            V_U_start(duty); 
+            
             break;
         case 1:
-            V_W_start(duty);
+           
             break;
         case 2:
-            U_W_start(duty);
+           
             break;
         case 3:
-            U_V_start(duty);
+            
             break;
         case 4:
-            W_V_start(duty);
+           
             break;
         case 5:
-            W_U_start(duty);
+           
             i=0;
             break;
 
         
         default:
-        pwmStopAll();
+       
             break;
         }
       
         }else{
             ssd1306_display_text(dev_pt, 1, "Bridge=OFF", 10, false);
-            pwmStopAll();
+            
         }
         
         snprintf(display_message, sizeof(display_message), "Torque: %lu", Torque);
@@ -89,6 +89,6 @@ void app_main(void)
         //gpio_set_level(CONFIG_RFE_GPIO,0);
        
         vTaskDelay(500 / portTICK_PERIOD_MS);  // Verzögerung für die Task-Schleife
-        i++;
+        //i++;
     }
 }
