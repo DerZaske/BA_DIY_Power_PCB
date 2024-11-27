@@ -19,9 +19,7 @@ void app_main(void)
     configure_GPIO_dir(TAG);
     adc_oneshot_unit_handle_t adc1_handle = configure_ADC1(TAG);    
     SSD1306_t *dev_pt = configure_OLED(TAG);
-    
-    set_PWM_Timer();
-    set_PWM();
+    conf_mcpwm_timers();
     int i =3;
     
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
