@@ -13,6 +13,12 @@ void app_main(void)
     int32_t Current_V = 0;
     int32_t Current_W = 0;
     int32_t Current_bridge =0;
+    bool Hall_A_On = false;
+    bool Hall_B_On = false;
+    bool Hall_C_On = false;
+    int direction = 0;
+    float Speed_indx = 0.0;
+    float Speed_AB = 0.0;
     float duty = 0.0;
     char display_message[50]; // Puffer für die Nachricht
     ESP_LOGI(TAG, "Test");
@@ -31,6 +37,15 @@ void app_main(void)
         Current_U = get_current_ASC712(adc1_handle,CONFIG_I_SENSE_U_ADC);
         Current_V = get_current_ASC712(adc1_handle,CONFIG_I_SENSE_U_ADC);
         Current_W = get_current_ASC712(adc1_handle,CONFIG_I_SENSE_U_ADC);
+        
+       /* Hall_A_On = get_Hall(CONFIG_HALL_A_GPIO);
+        Hall_B_On = get_Hall(CONFIG_HALL_B_GPIO);
+        Hall_C_On = get_Hall(CONFIG_HALL_C_GPIO);
+        */
+        Speed_indx = get_speed_index();
+        Speed_AB = get_speed_AB();
+        direction = get_direction();
+
         Current_bridge = get_current_bridge(adc1_handle, CONFIG_I_SENSE_ADC);
         if (Voltage_IN >= 20000){
             ssd1306_display_text(dev_pt, 1, "Bridge=ON", 10, false);

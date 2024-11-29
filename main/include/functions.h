@@ -15,6 +15,8 @@
 #include "esp_adc/adc_oneshot.h"
 #include "hal/mcpwm_types.h"
 #include "driver/mcpwm_prelude.h"
+#include "esp_timer.h"
+
 
 #define HIN_U_CH 0
 #define HIN_V_CH 1
@@ -23,6 +25,10 @@
 #ifndef MY_COMPONENT_H
 #define MY_COMPONENT_H
 extern adc_cali_handle_t cali_handle;
+extern uint64_t delta_index_time;
+extern uint64_t last_index_time;
+extern uint64_t delta_AB_time;
+extern uint64_t last_AB_time;
 
 // Deklaration der Funktion, die in my_component.c implementiert ist
 void configure_GPIO_dir(const char *TAG);
@@ -43,6 +49,10 @@ void U_W_start(int duty);
 void W_U_start(int duty);
 void V_W_start(int duty);
 void W_V_start(int duty);
+bool get_Hall(int HallSensorGPIO);
+int get_direction();
+float get_speed_index();
+float get_speed_AB();
 void conf_mcpwm_timers();
 void parse_3pins(const char *TAG, const char *pin_string, int *pins);
 SSD1306_t *configure_OLED(const char *TAG);

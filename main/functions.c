@@ -1,10 +1,32 @@
 
 #include "functions.h"
+uint64_t delta_index_time = 0;
+uint64_t last_index_time = 0;
+uint64_t delta_AB_time = 0;
+uint64_t last_AB_time = 0;    // Definition der Variablen
+
 adc_cali_handle_t cali_handle= NULL;
 
 /*############################################*/
 /*############### GPIO-Setup #################*/
 /*############################################*/
+void IRAM_ATTR index_isr_handler(void *arg){
+    uint64_t current_time = esp_timer_get_time();
+
+    if (last_index_time != 0){
+        delta_index_time = current_time - last_index_time;
+    }
+    last_index_time = current_time;
+}
+void IRAM_ATTR enc_ab_isr_handler(void *arg){
+    uint64_t current_time = esp_timer_get_time();
+
+    if (last_AB_time != 0){
+        delta_AB_time = current_time - last_AB_time;
+    }
+    last_AB_time = current_time;
+}
+
 void configure_GPIO_dir(const char *TAG)
 {
     /* reset every used GPIO-pin *
@@ -52,7 +74,19 @@ void configure_GPIO_dir(const char *TAG)
     gpio_set_direction(CONFIG_EXT_ENC_LEFT_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_EXT_ENC_RIGHT_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_RFE_GPIO, GPIO_MODE_INPUT);
+
     ESP_LOGI(TAG, "GPIO dirs configured for DIY power PCB");
+
+    gpio_config_t io_conf = {};
+    io_conf.pin_bit_mask = (1ULL << CONFIG_EXT_ENC_INDX_GPIO)| (1ULL << CONFIG_HALL_A_GPIO);
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    io_conf.intr_type = GPIO_INTR_POSEDGE;  // Interrupt auf steigende Flanke
+    gpio_config(&io_conf);
+
+    gpio_install_isr_service(0);
+    gpio_isr_handler_add(CONFIG_EXT_ENC_INDX_GPIO, index_isr_handler, NULL);
+    gpio_isr_handler_add(CONFIG_HALL_A_GPIO, enc_ab_isr_handler, NULL);
 }
 /*############################################*/
 /*################ ADC-Setup #################*/
@@ -504,6 +538,65 @@ void conf_mcpwm_timers(){
     
 
     }
+bool get_Hall(int HallSensorGPIO){
+    char* TAG="";
+
+    if(HallSensorGPIO == CONFIG_HALL_A_GPIO){
+        TAG = "HALL_A";
+    }else if(HallSensorGPIO == CONFIG_HALL_B_GPIO){
+        TAG = "HALL_B";
+    }
+    else if(HallSensorGPIO == CONFIG_HALL_C_GPIO){
+        TAG = "HALL_C";
+    }else{
+        TAG = "Undefinded";
+    }
+
+    bool level = gpio_get_level(HallSensorGPIO);
+
+    if(level){
+    ESP_LOGI(TAG, "HIGH");
+    }else{
+    ESP_LOGI(TAG,"LOW");
+    }
+    return level;
+}
+int get_direction(){//-1=Error,0=right,1=left
+    bool right = gpio_get_level(CONFIG_EXT_ENC_RIGHT_GPIO);
+    bool left = gpio_get_level(CONFIG_EXT_ENC_LEFT_GPIO);
+    int direction;
+    if (left && right){
+        direction= -1;
+        ESP_LOGI("Encoder","Direction: Error");
+    }else if(right){
+        direction = 0;
+        ESP_LOGI("Encoder","Direction: Right");
+    }else{
+        direction = 1;
+           ESP_LOGI("Encoder","Direction: Left");
+    }
+    return direction;
+}
+
+float get_speed_index(){
+    uint64_t local_delta_time = delta_index_time;
+    float speed_rpm = 0;
+    if (local_delta_time>0){
+        speed_rpm = (60.0*1000000.0/local_delta_time);
+        ESP_LOGI("Encoder", "Geschwindigkeit_Indx: %.2f RPM", speed_rpm);
+    }
+return speed_rpm;
+}
+float get_speed_AB(){
+    uint64_t local_delta_time = delta_AB_time;
+    float speed_rpm = 0;
+    if (local_delta_time>0){
+        speed_rpm = (60.0*1000000.0/local_delta_time)/1000;
+        ESP_LOGI("Encoder", "Geschwindigkeit_AB: %.2f RPM", speed_rpm);
+    }
+return speed_rpm;
+}
+
 /*############################################*/
 /*################## MISC ####################*/
 /*############################################*/
