@@ -13,6 +13,7 @@ void app_main(void)
     int32_t Current_V = 0;
     int32_t Current_W = 0;
     int32_t Current_bridge =0;
+    int16_t enc_counter = 0;
     bool Hall_A_On = false;
     bool Hall_B_On = false;
     bool Hall_C_On = false;
@@ -45,7 +46,7 @@ void app_main(void)
         Speed_indx = get_speed_index();
         Speed_AB = get_speed_AB();
         direction = get_direction();
-
+        enc_counter = get_enc_in_counter();
         Current_bridge = get_current_bridge(adc1_handle, CONFIG_I_SENSE_ADC);
         if (Voltage_IN >= 20000){
             ssd1306_display_text(dev_pt, 1, "Bridge=ON", 10, false);
@@ -78,10 +79,11 @@ void app_main(void)
         }
       
         }else{
-            ssd1306_display_text(dev_pt, 1, "Bridge=OFF", 10, false);
+            
             
         }
-        
+        snprintf(display_message, sizeof(display_message), "count: %d", enc_counter);
+        ssd1306_display_text(dev_pt, 1, display_message, 10, false);
         snprintf(display_message, sizeof(display_message), "Torque: %lu", Torque);
         ssd1306_display_text(dev_pt, 2, display_message, 11, false);    
 

@@ -3,6 +3,11 @@
 uint64_t delta_index_time = 0;
 uint64_t last_index_time = 0;
 uint64_t delta_AB_time = 0;
+volatile int enc_in_counter = 0;
+volatile bool enc_in_b_flag=false;
+volatile bool enc_in_a_flag=false;
+portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+
 uint64_t last_AB_time = 0;    // Definition der Variablen
 
 adc_cali_handle_t cali_handle= NULL;
@@ -10,23 +15,30 @@ adc_cali_handle_t cali_handle= NULL;
 /*############################################*/
 /*############### GPIO-Setup #################*/
 /*############################################*/
-void IRAM_ATTR index_isr_handler(void *arg){
-    uint64_t current_time = esp_timer_get_time();
-
-    if (last_index_time != 0){
-        delta_index_time = current_time - last_index_time;
+void IRAM_ATTR enc_in_a_isr_handler(void *arg){
+   
+    portENTER_CRITICAL_ISR(&mux);
+    if (enc_in_b_flag){
+        enc_in_counter++;
+        enc_in_b_flag = false;
+        }
+    else{
+        enc_in_a_flag = true;
     }
-    last_index_time = current_time;
+    portEXIT_CRITICAL_ISR(&mux);
 }
-void IRAM_ATTR enc_ab_isr_handler(void *arg){
-    uint64_t current_time = esp_timer_get_time();
+void IRAM_ATTR enc_in_b_isr_handler(void *arg){
 
-    if (last_AB_time != 0){
-        delta_AB_time = current_time - last_AB_time;
+    portENTER_CRITICAL_ISR(&mux);
+    if (enc_in_a_flag){
+        enc_in_counter--;
+        enc_in_a_flag = false;
+        }
+    else{
+        enc_in_b_flag = true;
     }
-    last_AB_time = current_time;
+    portEXIT_CRITICAL_ISR(&mux);
 }
-
 void configure_GPIO_dir(const char *TAG)
 {
     /* reset every used GPIO-pin *
@@ -42,7 +54,7 @@ void configure_GPIO_dir(const char *TAG)
     gpio_reset_pin(CONFIG_HALL_B_GPIO);
     gpio_reset_pin(CONFIG_HALL_C_GPIO);
 
-    //gpio_reset_pin(CONFIG_IN_ENC_A_GPIO); 
+    gpio_reset_pin(CONFIG_IN_ENC_A_GPIO); 
     gpio_reset_pin(CONFIG_IN_ENC_B_GPIO);
     gpio_reset_pin(CONFIG_IN_ENC_BUT_GPIO);
     //gpio_reset_pin(CONFIG_BUTTON_GPIO);
@@ -65,7 +77,7 @@ void configure_GPIO_dir(const char *TAG)
     gpio_set_direction(CONFIG_HALL_B_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_HALL_C_GPIO, GPIO_MODE_INPUT);
 
-    //gpio_set_direction(CONFIG_IN_ENC_A_GPIO, GPIO_MODE_INPUT);
+    gpio_set_direction(CONFIG_IN_ENC_A_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_IN_ENC_B_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_IN_ENC_BUT_GPIO, GPIO_MODE_INPUT);
     //gpio_set_direction(CONFIG_BUTTON_GPIO, GPIO_MODE_INPUT);
@@ -78,15 +90,17 @@ void configure_GPIO_dir(const char *TAG)
     ESP_LOGI(TAG, "GPIO dirs configured for DIY power PCB");
 
     gpio_config_t io_conf = {};
-    io_conf.pin_bit_mask = (1ULL << CONFIG_EXT_ENC_INDX_GPIO)| (1ULL << CONFIG_HALL_A_GPIO);
+    io_conf.pin_bit_mask = (1ULL << CONFIG_EXT_ENC_INDX_GPIO)| (1ULL << CONFIG_HALL_A_GPIO)| (1ULL << CONFIG_IN_ENC_A_GPIO)| (1ULL << CONFIG_IN_ENC_B_GPIO);
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
-    io_conf.intr_type = GPIO_INTR_POSEDGE;  // Interrupt auf steigende Flanke
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;  // Interrupt auf steigende Flanke
     gpio_config(&io_conf);
 
     gpio_install_isr_service(0);
     gpio_isr_handler_add(CONFIG_EXT_ENC_INDX_GPIO, index_isr_handler, NULL);
     gpio_isr_handler_add(CONFIG_HALL_A_GPIO, enc_ab_isr_handler, NULL);
+    gpio_isr_handler_add(CONFIG_IN_ENC_A_GPIO, enc_in_a_isr_handler, NULL);
+    gpio_isr_handler_add(CONFIG_IN_ENC_B_GPIO, enc_in_b_isr_handler, NULL);
 }
 /*############################################*/
 /*################ ADC-Setup #################*/
@@ -538,6 +552,9 @@ void conf_mcpwm_timers(){
     
 
     }
+/*############################################*/
+/*############ Blockkommutierung #############*/
+/*############################################*/
 bool get_Hall(int HallSensorGPIO){
     char* TAG="";
 
@@ -561,6 +578,26 @@ bool get_Hall(int HallSensorGPIO){
     }
     return level;
 }
+
+/*############################################*/
+/*############### Ext Encoder ################*/
+/*############################################*/
+void IRAM_ATTR index_isr_handler(void *arg){
+    uint64_t current_time = esp_timer_get_time();
+
+    if (last_index_time != 0){
+        delta_index_time = current_time - last_index_time;
+    }
+    last_index_time = current_time;
+}
+void IRAM_ATTR enc_ab_isr_handler(void *arg){
+    uint64_t current_time = esp_timer_get_time();
+
+    if (last_AB_time != 0){
+        delta_AB_time = current_time - last_AB_time;
+    }
+    last_AB_time = current_time;
+}
 int get_direction(){//-1=Error,0=right,1=left
     bool right = gpio_get_level(CONFIG_EXT_ENC_RIGHT_GPIO);
     bool left = gpio_get_level(CONFIG_EXT_ENC_LEFT_GPIO);
@@ -577,7 +614,6 @@ int get_direction(){//-1=Error,0=right,1=left
     }
     return direction;
 }
-
 float get_speed_index(){
     uint64_t local_delta_time = delta_index_time;
     float speed_rpm = 0;
@@ -595,6 +631,14 @@ float get_speed_AB(){
         ESP_LOGI("Encoder", "Geschwindigkeit_AB: %.2f RPM", speed_rpm);
     }
 return speed_rpm;
+}
+/*############################################*/
+/*############ Internal Encoder ##############*/
+/*############################################*/
+
+int16_t get_enc_in_counter(){
+ESP_LOGI("Encoder_Int","Counter:%i",enc_in_counter);
+return enc_in_counter;
 }
 
 /*############################################*/
