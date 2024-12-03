@@ -32,17 +32,20 @@ void app_main(void)
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
     while (1) {
         //ssd1306_clear_screen(dev_pt, false);
-        // Die Anzeige der OLED mit der richtigen Nachricht
+        /* Die Anzeige der OLED mit der richtigen Nachricht
         Torque = get_torque(adc1_handle);
         Voltage_IN = get_voltage_in(adc1_handle);
         Current_U = get_current_ASC712(adc1_handle,CONFIG_I_SENSE_U_ADC);
-        Current_V = get_current_ASC712(adc1_handle,CONFIG_I_SENSE_U_ADC);
-        Current_W = get_current_ASC712(adc1_handle,CONFIG_I_SENSE_U_ADC);
-        
+        Current_V = get_current_ASC712(adc1_handle,CONFIG_I_SENSE_V_ADC);
+        Current_W = get_current_ASC712(adc1_handle,CONFIG_I_SENSE_W_ADC);
+        */
        /* Hall_A_On = get_Hall(CONFIG_HALL_A_GPIO);
         Hall_B_On = get_Hall(CONFIG_HALL_B_GPIO);
         Hall_C_On = get_Hall(CONFIG_HALL_C_GPIO);
         */
+        int a = gpio_get_level(CONFIG_IN_ENC_A_GPIO);
+        int b = gpio_get_level(CONFIG_IN_ENC_B_GPIO);
+        ESP_LOGI("ENCODER_IN", "A=%d B=%d",a ,b);
         Speed_indx = get_speed_index();
         Speed_AB = get_speed_AB();
         direction = get_direction();
@@ -82,7 +85,7 @@ void app_main(void)
             
             
         }
-        snprintf(display_message, sizeof(display_message), "count: %d", enc_counter);
+        snprintf(display_message, sizeof(display_message), "count: %i", enc_counter);
         ssd1306_display_text(dev_pt, 1, display_message, 10, false);
         snprintf(display_message, sizeof(display_message), "Torque: %lu", Torque);
         ssd1306_display_text(dev_pt, 2, display_message, 11, false);    

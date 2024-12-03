@@ -4,8 +4,8 @@ uint64_t delta_index_time = 0;
 uint64_t last_index_time = 0;
 uint64_t delta_AB_time = 0;
 volatile int enc_in_counter = 0;
-volatile bool enc_in_b_flag=false;
 volatile bool enc_in_a_flag=false;
+volatile bool enc_in_b_flag=false;
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
 uint64_t last_AB_time = 0;    // Definition der Variablen
@@ -15,30 +15,7 @@ adc_cali_handle_t cali_handle= NULL;
 /*############################################*/
 /*############### GPIO-Setup #################*/
 /*############################################*/
-void IRAM_ATTR enc_in_a_isr_handler(void *arg){
-   
-    portENTER_CRITICAL_ISR(&mux);
-    if (enc_in_b_flag){
-        enc_in_counter++;
-        enc_in_b_flag = false;
-        }
-    else{
-        enc_in_a_flag = true;
-    }
-    portEXIT_CRITICAL_ISR(&mux);
-}
-void IRAM_ATTR enc_in_b_isr_handler(void *arg){
 
-    portENTER_CRITICAL_ISR(&mux);
-    if (enc_in_a_flag){
-        enc_in_counter--;
-        enc_in_a_flag = false;
-        }
-    else{
-        enc_in_b_flag = true;
-    }
-    portEXIT_CRITICAL_ISR(&mux);
-}
 void configure_GPIO_dir(const char *TAG)
 {
     /* reset every used GPIO-pin *
@@ -79,6 +56,7 @@ void configure_GPIO_dir(const char *TAG)
 
     gpio_set_direction(CONFIG_IN_ENC_A_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_IN_ENC_B_GPIO, GPIO_MODE_INPUT);
+    //gpio_set_pull_mode(CONFIG_IN_ENC_B_GPIO, GPIO_PULLUP_ENABLE);
     gpio_set_direction(CONFIG_IN_ENC_BUT_GPIO, GPIO_MODE_INPUT);
     //gpio_set_direction(CONFIG_BUTTON_GPIO, GPIO_MODE_INPUT);
 
@@ -93,14 +71,14 @@ void configure_GPIO_dir(const char *TAG)
     io_conf.pin_bit_mask = (1ULL << CONFIG_EXT_ENC_INDX_GPIO)| (1ULL << CONFIG_HALL_A_GPIO)| (1ULL << CONFIG_IN_ENC_A_GPIO)| (1ULL << CONFIG_IN_ENC_B_GPIO);
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
-    io_conf.intr_type = GPIO_INTR_ANYEDGE;  // Interrupt auf steigende Flanke
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;  // Interrupt auf allen Flanken
     gpio_config(&io_conf);
 
     gpio_install_isr_service(0);
-    gpio_isr_handler_add(CONFIG_EXT_ENC_INDX_GPIO, index_isr_handler, NULL);
-    gpio_isr_handler_add(CONFIG_HALL_A_GPIO, enc_ab_isr_handler, NULL);
-    gpio_isr_handler_add(CONFIG_IN_ENC_A_GPIO, enc_in_a_isr_handler, NULL);
-    gpio_isr_handler_add(CONFIG_IN_ENC_B_GPIO, enc_in_b_isr_handler, NULL);
+    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_EXT_ENC_INDX_GPIO, index_isr_handler, NULL));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_HALL_A_GPIO, enc_ab_isr_handler, NULL));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_A_GPIO, enc_in_a_isr_handler, NULL));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_B_GPIO, enc_in_b_isr_handler, NULL));
 }
 /*############################################*/
 /*################ ADC-Setup #################*/
@@ -273,7 +251,6 @@ void pwmStart(int PWM_CH, int Duty){
     ledc_set_duty(LEDC_HIGH_SPEED_MODE,PWM_CH, Duty);
     ledc_update_duty(LEDC_HIGH_SPEED_MODE,PWM_CH);
 }
-
 void pwmStop(int PWM_CH){
     ledc_stop(LEDC_HIGH_SPEED_MODE, PWM_CH, 0);
 }
@@ -285,8 +262,6 @@ void pwmStopAll(){
     gpio_set_level(CONFIG_LIN_V_GPIO, 0);      
     gpio_set_level(CONFIG_LIN_W_GPIO, 0);      
 }
-
-
 void U_V_start(int duty)
 {   
     //HIN_V und LIN_U abschalten
@@ -332,7 +307,6 @@ void V_W_start(int duty)
     pwmStart(HIN_V_CH, duty);
     gpio_set_level(CONFIG_LIN_W_GPIO, 1);     
 }
-
 void W_V_start(int duty)
 {
     //HIN_U und LIN_W abschalten
@@ -351,36 +325,20 @@ void conf_mcpwm_timers(){
    mcpwm_timer_handle_t timer_U = NULL;
    mcpwm_timer_handle_t timer_V = NULL;
    mcpwm_timer_handle_t timer_W = NULL;
+   uint16_t periode_ticks = 40000000/CONFIG_FREQ_PWM;
+
 //creating timer configs and linking them with the timers
-    mcpwm_timer_config_t timer_U_config = 
+    mcpwm_timer_config_t timer_config = 
     {
         .group_id = 0,
         .clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT,
-        .resolution_hz = 40000000, // 1MHz Auflösung
-        .period_ticks = 2000,
+        .resolution_hz = 40000000, //40MHz
+        .period_ticks = periode_ticks,      //40MHz/2KHz = 20KHz
         .count_mode = MCPWM_TIMER_COUNT_MODE_UP,
     };
-    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_U_config, &timer_U));
-
-    mcpwm_timer_config_t timer_V_config = 
-    {
-        .group_id = 0,
-        .clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT,
-        .resolution_hz = 40000000, // 1MHz Auflösung
-        .period_ticks = 2000,
-        .count_mode = MCPWM_TIMER_COUNT_MODE_UP,
-    };
-    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_V_config, &timer_V));
-
-    mcpwm_timer_config_t timer_W_config = 
-    {
-        .group_id = 0,
-        .clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT,
-        .resolution_hz = 40000000, // 1MHz Auflösung
-        .period_ticks = 2000,
-        .count_mode = MCPWM_TIMER_COUNT_MODE_UP,
-    };
-    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_W_config, &timer_W));
+    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config, &timer_U));
+    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config, &timer_V));
+    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config, &timer_W));
 
     ESP_ERROR_CHECK(mcpwm_timer_enable(timer_U));
     ESP_ERROR_CHECK(mcpwm_timer_start_stop(timer_U,MCPWM_TIMER_START_NO_STOP));
@@ -403,14 +361,14 @@ void conf_mcpwm_timers(){
     mcpwm_timer_sync_phase_config_t sync_phase_V_config = 
     {
         .sync_src = sync_signal,
-        .count_value = 667, //120 degree delayed
+        .count_value = periode_ticks/3, //120 degree delayed
     };
     ESP_ERROR_CHECK(mcpwm_timer_set_phase_on_sync(timer_V,&sync_phase_V_config));
 //set Timer_W as an Slave of Timer_U with another phase 
     mcpwm_timer_sync_phase_config_t sync_phase_W_config = 
     {
         .sync_src = sync_signal,
-        .count_value = 1333, //240 degree delayed
+        .count_value = periode_ticks*2/3, //240 degree delayed
     };
     ESP_ERROR_CHECK(mcpwm_timer_set_phase_on_sync(timer_W,&sync_phase_W_config));    
 
@@ -418,24 +376,15 @@ void conf_mcpwm_timers(){
     mcpwm_oper_handle_t operator_U = NULL;
     mcpwm_oper_handle_t operator_V = NULL;
     mcpwm_oper_handle_t operator_W = NULL; 
+
     //Operator for Timer_U
-    mcpwm_operator_config_t operator_U_config = 
+    mcpwm_operator_config_t operator_config = 
     {
         .group_id=0,
     };
-    ESP_ERROR_CHECK(mcpwm_new_operator(&operator_U_config,&operator_U));
-    //Operator for Timer_V
-    mcpwm_operator_config_t operator_V_config = 
-    {
-        .group_id=0,
-    };
-    ESP_ERROR_CHECK(mcpwm_new_operator(&operator_V_config,&operator_V));
-    //Operator for Timer_W
-    mcpwm_operator_config_t operator_W_config = 
-    {
-        .group_id=0,
-    };
-    ESP_ERROR_CHECK(mcpwm_new_operator(&operator_W_config,&operator_W));
+    ESP_ERROR_CHECK(mcpwm_new_operator(&operator_config,&operator_U));
+    ESP_ERROR_CHECK(mcpwm_new_operator(&operator_config,&operator_V));
+    ESP_ERROR_CHECK(mcpwm_new_operator(&operator_config,&operator_W));
     
     //connect PWM-Signals with Timers
     ESP_ERROR_CHECK(mcpwm_operator_connect_timer(operator_U, timer_U));
@@ -447,23 +396,18 @@ void conf_mcpwm_timers(){
     mcpwm_cmpr_handle_t comperator_V = NULL;
     mcpwm_cmpr_handle_t comperator_W = NULL;
 
-    mcpwm_comparator_config_t comparator_U_config = {
+    mcpwm_comparator_config_t comparator_config = {
         .flags.update_cmp_on_tez = true,
     };
-    ESP_ERROR_CHECK(mcpwm_new_comparator(operator_U, &comparator_U_config,&comperator_U));
-    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_U, 1000));//=50% Duty cycle
+    ESP_ERROR_CHECK(mcpwm_new_comparator(operator_U, &comparator_config,&comperator_U));
+    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_U, periode_ticks*CONFIG_DUTY_PWM/100));//Duty_cycle from Config
 
-    mcpwm_comparator_config_t comparator_V_config = {
-        .flags.update_cmp_on_tez = true,
-    };
-    ESP_ERROR_CHECK(mcpwm_new_comparator(operator_V, &comparator_V_config,&comperator_V));
-    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_V, 1000));//=50% Duty cycle
+    ESP_ERROR_CHECK(mcpwm_new_comparator(operator_V, &comparator_config,&comperator_V));
+    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_V, periode_ticks*CONFIG_DUTY_PWM/100));
 
-    mcpwm_comparator_config_t comparator_W_config = {
-        .flags.update_cmp_on_tez = true,
-    };
-    ESP_ERROR_CHECK(mcpwm_new_comparator(operator_W, &comparator_W_config,&comperator_W));
-    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_W, 1000));//=50% Duty cycle
+    ESP_ERROR_CHECK(mcpwm_new_comparator(operator_W, &comparator_config,&comperator_W));
+    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_W,periode_ticks*CONFIG_DUTY_PWM/100));
+
 //create generators for every pin
     mcpwm_gen_handle_t generator_U_HIN = NULL;
     mcpwm_gen_handle_t generator_V_HIN = NULL;
@@ -471,7 +415,8 @@ void conf_mcpwm_timers(){
     mcpwm_gen_handle_t generator_U_LIN = NULL;
     mcpwm_gen_handle_t generator_V_LIN = NULL;
     mcpwm_gen_handle_t generator_W_LIN = NULL;
-    //HIN Pins
+
+//HIN Pins
     //HIN_U
     mcpwm_generator_config_t generator_U_HIN_config ={
         .gen_gpio_num = CONFIG_HIN_U_GPIO,
@@ -517,12 +462,7 @@ void conf_mcpwm_timers(){
     };
     ESP_ERROR_CHECK(mcpwm_new_generator(operator_W, &generator_W_LIN_config, &generator_W_LIN));
 
-    
-
-   
-    
-    /*ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_V_LIN, generator_V_HIN,&deadtime_config));
-    ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_LIN, generator_W_HIN,&deadtime_config));*/
+    //set generator action on timer event    
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_U_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_U, MCPWM_GEN_ACTION_LOW)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_U_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
@@ -535,7 +475,7 @@ void conf_mcpwm_timers(){
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_W, MCPWM_GEN_ACTION_LOW)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_W_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_W, MCPWM_GEN_ACTION_LOW)));
-    
+    //set Dead times
     mcpwm_dead_time_config_t deadtime_config = {
         .posedge_delay_ticks = 20,
         .negedge_delay_ticks = 0,
@@ -635,11 +575,45 @@ return speed_rpm;
 /*############################################*/
 /*############ Internal Encoder ##############*/
 /*############################################*/
+void IRAM_ATTR enc_in_a_isr_handler(void *arg) {
+    int a = gpio_get_level(CONFIG_IN_ENC_A_GPIO);
+    int b = gpio_get_level(CONFIG_IN_ENC_B_GPIO);
+
+    portENTER_CRITICAL_ISR(&mux);
+    if (a == b) {
+        enc_in_counter++;  // Richtung vorwärts
+    }else{
+        enc_in_a_flag = true;
+    }
+    portEXIT_CRITICAL_ISR(&mux);
+}
+
+void IRAM_ATTR enc_in_b_isr_handler(void *arg) {
+    int a = gpio_get_level(CONFIG_IN_ENC_A_GPIO);
+    int b = gpio_get_level(CONFIG_IN_ENC_B_GPIO);
+
+    portENTER_CRITICAL_ISR(&mux);
+    if (a == b) {
+        enc_in_counter--;  // Richtung rückwärts
+    }else{
+        enc_in_b_flag = true;
+    }
+    portEXIT_CRITICAL_ISR(&mux);
+}
+void IRAM_ATTR enc_in_button_isr_handler(void *arg) {
+   if (enc_button_flag){
+    enc_button_state = 
+    enc_button_flag = false;
+   }else{
+    enc_button_flag = true;
+   }
+}
 
 int16_t get_enc_in_counter(){
 ESP_LOGI("Encoder_Int","Counter:%i",enc_in_counter);
 return enc_in_counter;
 }
+bool get_enc_but()
 
 /*############################################*/
 /*################## MISC ####################*/

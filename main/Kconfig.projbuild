@@ -30,25 +30,6 @@ menu "DIY Power PCB Configuration"
         default "26, 14, 13"
         help
             GPIO numbers of the Highside controling pins, seperate by comma!
-    config ENABLE_PWM_HIN
-        bool "Enable PWM for Highsides"
-        default y
-        help
-            Enable PWM on the Highside Switches, probably mendatory because of bootstrap capacitors
-    if ENABLE_PWM_HIN
-    config FREQ_PWM_HIN
-        int "frequency"
-        range 20000 60000
-        default 20000
-        help
-            The base Frequency of the PWM in Hz min: 20KHz max: 60KHz
-    config DUTY_PWM_HIN
-        int "duty cycle"
-        range 0 100
-        default 50
-        help
-            The inital duty-cycle
-    endif
     endmenu
     menu "Lowside pin configurations (LIN)"
     config  LIN_U_V_W_GPIO
@@ -56,25 +37,27 @@ menu "DIY Power PCB Configuration"
         default "25, 27, 12"
         help
             GPIO numbers of the Lowside controling pins, seperate by comma!
-    config ENABLE_PWM_LIN
-        bool "Enable PWM for Lowsides"
-        default n
-        help
-            Enable PWM on the Lowside Switches, probably not mendatory because of Highside PWM more important
-    if ENABLE_PWM_LIN
-    config FREQ_PWM_LIN
-        int "frequency"
-        range 20000 60000
-        default 20000
-        help
-            The base Frequency of the PWM in Hz min: 20KHz max: 60KHz
-    config DUTY_PWM_LIN
-        int "duty cycle"
-        range 0 100
-        default 50
-        help
-            The inital duty-cycle
-    endif
+    endmenu
+    menu "PWM configuration"
+        config ENABLE_PWM
+            bool "Enable PWM"
+            default y
+            help
+                Enable PWM
+        if ENABLE_PWM
+        config FREQ_PWM
+            int "frequency"
+            range 20000 80000
+            default 20000
+            help
+                The base Frequency of the PWM in Hz min: 20KHz max: 60KHz
+        config DUTY_PWM
+            int "duty cycle"
+            range 0 100
+            default 50
+            help
+                The inital duty-cycle in percent
+        endif
     endmenu
     menu "Hall Sensor pin configurations"
     config  HALL_A_B_C_GPIO
