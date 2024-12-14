@@ -45,6 +45,12 @@ menu "DIY Power PCB Configuration"
             help
                 Enable PWM
         if ENABLE_PWM
+        config TIMER_BASE_FREQ
+            int "Timers Base frequency"
+            range 1000000 40000000
+            default 40000000
+            help
+                The Base Freqeuncy of the used Timer 
         config FREQ_PWM
             int "frequency"
             range 20000 80000
@@ -58,6 +64,11 @@ menu "DIY Power PCB Configuration"
             help
                 The inital duty-cycle in percent
         endif
+        config DEAD_TIME_PWM
+            int "time (ns)"
+            range 25 1000
+            help 
+                Deadtime
     endmenu
     menu "Hall Sensor pin configurations"
     config  HALL_A_B_C_GPIO
@@ -72,7 +83,11 @@ menu "DIY Power PCB Configuration"
         default "3, 2, 23"
         help
             GPIO numbers of the pins connected to A,B and the button of the encoder
-
+    config IN_ENCODER_DEBOUNCE_TIME
+        int "Debounce Time in ms"
+        default "5"
+        help
+            debouncing time between Encoder turns
     config BUTTON_GPIO
         int "button GPIO pin"
         default 1

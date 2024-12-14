@@ -3,9 +3,12 @@
 uint64_t delta_index_time = 0;
 uint64_t last_index_time = 0;
 uint64_t delta_AB_time = 0;
-volatile int enc_in_counter = 0;
-volatile bool enc_in_a_flag=false;
-volatile bool enc_in_b_flag=false;
+volatile int16_t enc_in_counter = 0;
+volatile unsigned long last_interrupt_time_a = 0; // Entprellungs-Timer
+volatile unsigned long last_interrupt_time_b = 0; // Entprellungs-Timer
+volatile uint16_t last_interrupt_time_but = 0;
+volatile bool enc_in_button_state = false;
+
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
 uint64_t last_AB_time = 0;    // Definition der Variablen
@@ -22,11 +25,11 @@ void configure_GPIO_dir(const char *TAG)
     gpio_reset_pin(CONFIG_HIN_U_GPIO);
     gpio_reset_pin(CONFIG_HIN_V_GPIO);
     gpio_reset_pin(CONFIG_HIN_W_GPIO);
-
-    gpio_reset_pin(CONFIG_LIN_U_GPIO);
-    gpio_reset_pin(CONFIG_LIN_V_GPIO);
-    gpio_reset_pin(CONFIG_LIN_W_GPIO);
 */
+  //  gpio_reset_pin(CONFIG_LIN_U_GPIO);
+    gpio_reset_pin(CONFIG_LIN_V_GPIO);
+   // gpio_reset_pin(CONFIG_LIN_W_GPIO);
+
     gpio_reset_pin(CONFIG_HALL_A_GPIO);
     gpio_reset_pin(CONFIG_HALL_B_GPIO);
     gpio_reset_pin(CONFIG_HALL_C_GPIO);
@@ -44,19 +47,19 @@ void configure_GPIO_dir(const char *TAG)
     /* Set the GPIO as a push/pull output
     gpio_set_direction(CONFIG_HIN_U_GPIO, GPIO_MODE_OUTPUT);
     gpio_set_direction(CONFIG_HIN_V_GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_direction(CONFIG_HIN_W_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_direction(CONFIG_HIN_W_GPIO, GPIO_MODE_OUTPUT);*/
 
-    gpio_set_direction(CONFIG_LIN_U_GPIO, GPIO_MODE_OUTPUT);
+//    gpio_set_direction(CONFIG_LIN_U_GPIO, GPIO_MODE_OUTPUT);
     gpio_set_direction(CONFIG_LIN_V_GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_direction(CONFIG_LIN_W_GPIO, GPIO_MODE_OUTPUT);
-*/
+  //  gpio_set_direction(CONFIG_LIN_W_GPIO, GPIO_MODE_OUTPUT);
+
     gpio_set_direction(CONFIG_HALL_A_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_HALL_B_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_HALL_C_GPIO, GPIO_MODE_INPUT);
 
     gpio_set_direction(CONFIG_IN_ENC_A_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_IN_ENC_B_GPIO, GPIO_MODE_INPUT);
-    //gpio_set_pull_mode(CONFIG_IN_ENC_B_GPIO, GPIO_PULLUP_ENABLE);
+    gpio_set_pull_mode(CONFIG_IN_ENC_B_GPIO, GPIO_PULLUP_ENABLE);
     gpio_set_direction(CONFIG_IN_ENC_BUT_GPIO, GPIO_MODE_INPUT);
     //gpio_set_direction(CONFIG_BUTTON_GPIO, GPIO_MODE_INPUT);
 
@@ -71,14 +74,24 @@ void configure_GPIO_dir(const char *TAG)
     io_conf.pin_bit_mask = (1ULL << CONFIG_EXT_ENC_INDX_GPIO)| (1ULL << CONFIG_HALL_A_GPIO)| (1ULL << CONFIG_IN_ENC_A_GPIO)| (1ULL << CONFIG_IN_ENC_B_GPIO);
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
-    io_conf.intr_type = GPIO_INTR_ANYEDGE;  // Interrupt auf allen Flanken
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;  // Interrupt auf beiden Flanken
     gpio_config(&io_conf);
+
+    
+
+    gpio_config_t io_conf_negedge = {};
+    io_conf_negedge.pin_bit_mask = (1ULL << CONFIG_IN_ENC_BUT_GPIO);
+    io_conf_negedge.mode = GPIO_MODE_INPUT;
+    io_conf_negedge.pull_up_en = GPIO_PULLUP_ENABLE;
+    io_conf_negedge.intr_type = GPIO_INTR_POSEDGE; // Interrupt nur auf positive Flanken
+    gpio_config(&io_conf_negedge);
 
     gpio_install_isr_service(0);
     ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_EXT_ENC_INDX_GPIO, index_isr_handler, NULL));
     ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_HALL_A_GPIO, enc_ab_isr_handler, NULL));
     ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_A_GPIO, enc_in_a_isr_handler, NULL));
     ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_B_GPIO, enc_in_b_isr_handler, NULL));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_BUT_GPIO, enc_in_but_isr_handler, NULL));
 }
 /*############################################*/
 /*################ ADC-Setup #################*/
@@ -191,131 +204,7 @@ SSD1306_t *configure_OLED(const char *TAG)
     ssd1306_clear_screen(&dev, false);
     return &dev;
 }
-/*############################################*/
-/*################ PWM-Setup #################*/
-/*############################################*/
 
-void set_PWM_Timer()
-{
-    ledc_timer_config_t ledc_timer = {
-        .speed_mode         = LEDC_HIGH_SPEED_MODE,
-        .timer_num          = LEDC_TIMER_0,
-        .duty_resolution    = LEDC_TIMER_10_BIT,
-        .freq_hz            = CONFIG_FREQ_PWM_HIN,
-        .clk_cfg            = LEDC_AUTO_CLK
-    };
-    esp_err_t err = ledc_timer_config(&ledc_timer);
-    if (err != ESP_OK) {
-        printf("Fehler beim Konfigurieren des LEDC-Timers: %s\n", esp_err_to_name(err));
-        return;
-    }
-   
-}
-void set_PWM()
-{
-        ledc_channel_config_t ledc_channel_HIN_U = 
-    {
-        .speed_mode     = LEDC_HIGH_SPEED_MODE,    // Gleicher Modus wie beim Timer
-        .channel        = LEDC_CHANNEL_0,          // Kanal 0 verwenden
-        .timer_sel      = LEDC_TIMER_0,            // Timer 0 zuweisen
-        .intr_type      = LEDC_INTR_DISABLE,       // Keine Interrupts
-        .gpio_num       = CONFIG_HIN_U_GPIO,         
-        .duty           = 0,                     //
-        .hpoint         = 0                        // Start des PWM-Signals
-    };
-    ledc_channel_config(&ledc_channel_HIN_U);   // Kanal konfigurieren
-        ledc_channel_config_t ledc_channel_HIN_V = 
-    {
-        .speed_mode     = LEDC_HIGH_SPEED_MODE,    // Gleicher Modus wie beim Timer
-        .channel        = LEDC_CHANNEL_1,          // Kanal 0 verwenden
-        .timer_sel      = LEDC_TIMER_0,            // Timer 0 zuweisen
-        .intr_type      = LEDC_INTR_DISABLE,       // Keine Interrupts
-        .gpio_num       = CONFIG_HIN_V_GPIO,         
-        .duty           = 0,                     // 
-        .hpoint         = 0                        // Start des PWM-Signals
-    };
-    ledc_channel_config(&ledc_channel_HIN_V);   // Kanal konfigurieren
-        ledc_channel_config_t ledc_channel_HIN_W = 
-    {
-        .speed_mode     = LEDC_HIGH_SPEED_MODE,    // Gleicher Modus wie beim Timer
-        .channel        = LEDC_CHANNEL_2,          // Kanal 0 verwenden
-        .timer_sel      = LEDC_TIMER_0,            // Timer 0 zuweisen
-        .intr_type      = LEDC_INTR_DISABLE,       // Keine Interrupts
-        .gpio_num       = CONFIG_HIN_W_GPIO,         
-        .duty           = 0,                     // 
-        .hpoint         = 0                        // Start des PWM-Signals
-    };
-    ledc_channel_config(&ledc_channel_HIN_W);   // Kanal konfigurieren
-}
-void pwmStart(int PWM_CH, int Duty){
-    ledc_set_duty(LEDC_HIGH_SPEED_MODE,PWM_CH, Duty);
-    ledc_update_duty(LEDC_HIGH_SPEED_MODE,PWM_CH);
-}
-void pwmStop(int PWM_CH){
-    ledc_stop(LEDC_HIGH_SPEED_MODE, PWM_CH, 0);
-}
-void pwmStopAll(){
-    ledc_stop(LEDC_HIGH_SPEED_MODE, HIN_U_CH, 0);
-    ledc_stop(LEDC_HIGH_SPEED_MODE, HIN_V_CH, 0);
-    ledc_stop(LEDC_HIGH_SPEED_MODE, HIN_W_CH, 0);
-    gpio_set_level(CONFIG_LIN_U_GPIO, 0);      
-    gpio_set_level(CONFIG_LIN_V_GPIO, 0);      
-    gpio_set_level(CONFIG_LIN_W_GPIO, 0);      
-}
-void U_V_start(int duty)
-{   
-    //HIN_V und LIN_U abschalten
-    pwmStop(HIN_V_CH);
-    gpio_set_level(CONFIG_LIN_U_GPIO, 0);
-    //HIN_U und LIN_V einschalten     
-    pwmStart(HIN_U_CH, duty);
-    gpio_set_level(CONFIG_LIN_V_GPIO, 1);      
-}
-void V_U_start(int duty)
-{
-    //HIN_U und LIN_V abschalten
-    pwmStop(HIN_U_CH);
-    gpio_set_level(CONFIG_LIN_V_GPIO, 0);
-    //HIN_V und LIN_U einschalten     
-    pwmStart(HIN_V_CH, duty);
-    gpio_set_level(CONFIG_LIN_U_GPIO, 1);  
-}
-void U_W_start(int duty)
-{
-    //HIN_W und LIN_U abschalten
-    pwmStop(HIN_W_CH);
-    gpio_set_level(CONFIG_LIN_U_GPIO, 0);
-    //HIN_U und LIN_V einschalten     
-    pwmStart(HIN_W_CH, duty);
-    gpio_set_level(CONFIG_LIN_V_GPIO, 1);      
-}
-void W_U_start(int duty)
-{
-    //HIN_U und LIN_W abschalten
-    pwmStop(HIN_U_CH);
-    gpio_set_level(CONFIG_LIN_W_GPIO, 0);
-    //HIN_U und LIN_V einschalten     
-    pwmStart(HIN_W_CH, duty);
-    gpio_set_level(CONFIG_LIN_U_GPIO, 1);     
-}
-void V_W_start(int duty)
-{
-    //HIN_U und LIN_W abschalten
-    pwmStop(HIN_W_CH);
-    gpio_set_level(CONFIG_LIN_V_GPIO, 0);
-    //HIN_U und LIN_V einschalten     
-    pwmStart(HIN_V_CH, duty);
-    gpio_set_level(CONFIG_LIN_W_GPIO, 1);     
-}
-void W_V_start(int duty)
-{
-    //HIN_U und LIN_W abschalten
-    pwmStop(HIN_V_CH);
-    gpio_set_level(CONFIG_LIN_W_GPIO, 0);
-    //HIN_U und LIN_V einschalten     
-    pwmStart(HIN_W_CH, duty);
-    gpio_set_level(CONFIG_LIN_V_GPIO, 1);     
-}
 
 /*############################################*/
 /*############### MCPWM-Setup ################*/
@@ -325,7 +214,9 @@ void conf_mcpwm_timers(){
    mcpwm_timer_handle_t timer_U = NULL;
    mcpwm_timer_handle_t timer_V = NULL;
    mcpwm_timer_handle_t timer_W = NULL;
-   uint16_t periode_ticks = 40000000/CONFIG_FREQ_PWM;
+   uint32_t periode_ticks = CONFIG_TIMER_BASE_FREQ/CONFIG_FREQ_PWM;
+   double tick_period_ns = 1e9 / CONFIG_TIMER_BASE_FREQ; // Zeit pro Tick in ns
+   uint32_t dead_time_ticks = (uint32_t)round(CONFIG_DEAD_TIME_PWM / tick_period_ns);
 
 //creating timer configs and linking them with the timers
     mcpwm_timer_config_t timer_config = 
@@ -415,7 +306,7 @@ void conf_mcpwm_timers(){
     mcpwm_gen_handle_t generator_U_LIN = NULL;
     mcpwm_gen_handle_t generator_V_LIN = NULL;
     mcpwm_gen_handle_t generator_W_LIN = NULL;
-
+    mcpwm_gen_handle_t *mcpwm_gens[] ={&generator_U_HIN,&generator_U_LIN,&generator_V_HIN,&generator_V_LIN,&generator_W_HIN,&generator_W_LIN};
 //HIN Pins
     //HIN_U
     mcpwm_generator_config_t generator_U_HIN_config ={
@@ -467,7 +358,7 @@ void conf_mcpwm_timers(){
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_U, MCPWM_GEN_ACTION_LOW)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_U_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_U, MCPWM_GEN_ACTION_LOW)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_V_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+   /* ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_V_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_V_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_V, MCPWM_GEN_ACTION_LOW)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_V_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_V_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_V, MCPWM_GEN_ACTION_LOW)));
@@ -475,21 +366,22 @@ void conf_mcpwm_timers(){
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_W, MCPWM_GEN_ACTION_LOW)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_W_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
     ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_W, MCPWM_GEN_ACTION_LOW)));
+    */
     //set Dead times
     mcpwm_dead_time_config_t deadtime_config = {
-        .posedge_delay_ticks = 20,
+        .posedge_delay_ticks = dead_time_ticks,
         .negedge_delay_ticks = 0,
     };
 
     ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_U_HIN, generator_U_HIN,&deadtime_config));
-    ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_V_HIN, generator_V_HIN,&deadtime_config));
-    ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_HIN, generator_W_HIN,&deadtime_config));
+   // ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_V_HIN, generator_V_HIN,&deadtime_config));
+   // ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_HIN, generator_W_HIN,&deadtime_config));
     deadtime_config.posedge_delay_ticks = 0;
-    deadtime_config.negedge_delay_ticks = 20;
+    deadtime_config.negedge_delay_ticks = dead_time_ticks;
     ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_U_HIN, generator_U_LIN, &deadtime_config));
-    ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_V_HIN, generator_V_LIN, &deadtime_config));
-    ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_HIN, generator_W_LIN, &deadtime_config));
-    
+   //ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_V_HIN, generator_V_LIN, &deadtime_config));
+   //ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_HIN, generator_W_LIN, &deadtime_config));
+
 
     }
 /*############################################*/
@@ -576,59 +468,60 @@ return speed_rpm;
 /*############ Internal Encoder ##############*/
 /*############################################*/
 void IRAM_ATTR enc_in_a_isr_handler(void *arg) {
-    int a = gpio_get_level(CONFIG_IN_ENC_A_GPIO);
-    int b = gpio_get_level(CONFIG_IN_ENC_B_GPIO);
-
-    portENTER_CRITICAL_ISR(&mux);
-    if (a == b) {
-        enc_in_counter++;  // Richtung vorwärts
-    }else{
-        enc_in_a_flag = true;
+    uint64_t interrupt_time = esp_timer_get_time();
+    
+    // Entprellung: Verhindert die Erfassung von Störungen aufgrund von Prellung
+    if (interrupt_time - last_interrupt_time_a > (CONFIG_IN_ENCODER_DEBOUNCE_TIME*1000)) {  //  Entprellungszeit
+        last_interrupt_time_a = interrupt_time; // Entprellzeit zurücksetzen
+        // Bestimmen der Richtung anhand des Zustands von Pin A und B
+        if (gpio_get_level(CONFIG_IN_ENC_A_GPIO)==gpio_get_level(CONFIG_IN_ENC_B_GPIO)) {
+            enc_in_counter--; // Drehung nach links
+        }
+        
     }
-    portEXIT_CRITICAL_ISR(&mux);
 }
 
 void IRAM_ATTR enc_in_b_isr_handler(void *arg) {
-    int a = gpio_get_level(CONFIG_IN_ENC_A_GPIO);
-    int b = gpio_get_level(CONFIG_IN_ENC_B_GPIO);
+   uint64_t interrupt_time = esp_timer_get_time();
+    
+    // Entprellung: Verhindert die Erfassung von Störungen aufgrund von Prellung
+    if (interrupt_time - last_interrupt_time_b > (CONFIG_IN_ENCODER_DEBOUNCE_TIME*1000)) {  //  Entprellungszeit
+        last_interrupt_time_b = interrupt_time; // Entprellzeit zurücksetzen
+        // Bestimmen der Richtung anhand des Zustands von Pin A und B
+        if (gpio_get_level(CONFIG_IN_ENC_A_GPIO)==gpio_get_level(CONFIG_IN_ENC_B_GPIO)) {
+            enc_in_counter++;
+        }
 
-    portENTER_CRITICAL_ISR(&mux);
-    if (a == b) {
-        enc_in_counter--;  // Richtung rückwärts
-    }else{
-        enc_in_b_flag = true;
     }
-    portEXIT_CRITICAL_ISR(&mux);
-}
-void IRAM_ATTR enc_in_button_isr_handler(void *arg) {
-   if (enc_button_flag){
-    enc_button_state = 
-    enc_button_flag = false;
-   }else{
-    enc_button_flag = true;
-   }
 }
 
+void IRAM_ATTR enc_in_but_isr_handler(void *arg) {
+   uint64_t interrupt_time = esp_timer_get_time();
+    
+    // Entprellung: Verhindert die Erfassung von Störungen aufgrund von Prellung
+    if (interrupt_time - last_interrupt_time_but > (CONFIG_IN_ENCODER_DEBOUNCE_TIME*1000)) {  //  Entprellungszeit
+        last_interrupt_time_but = interrupt_time; // Entprellzeit zurücksetzen
+        // Bestimmen der Richtung anhand des Zustands von Pin A und B
+        if (gpio_get_level(CONFIG_IN_ENC_A_GPIO)) {
+            enc_in_button_state = true;
+        }
+
+    }
+}
 int16_t get_enc_in_counter(){
 ESP_LOGI("Encoder_Int","Counter:%i",enc_in_counter);
 return enc_in_counter;
 }
-bool get_enc_but()
+void set_enc_in_counter(int16_t inital_value){
+    enc_in_counter = inital_value;
+}
 
-/*############################################*/
-/*################## MISC ####################*/
-/*############################################*/
-//Ausgelagert in Preprocessing python program, generate_pins_header.py
-void parse_3pins(const char *TAG, const char *pin_string, int *pins) {
-    int pin_count = 0;  // Jetzt ein Integer, keine Null-Pointer-Dereferenzierung
-    char *token;
-    char *pin_list = strdup(pin_string);  // Kopie der String-Option
-
-    token = strtok(pin_list, ",");
-    while (token != NULL && pin_count < 3) { // maximal 3 Pins
-        pins[pin_count] = atoi(token);   // Umwandlung in Integer
-        pin_count++;
-        token = strtok(NULL, ",");
+bool get_enc_in_but(){
+    if (enc_in_button_state){
+        enc_in_button_state = false;
+        return true;
     }
-    free(pin_list);  // Speicher freigeben
+    else{
+        return false;
+    }
 }

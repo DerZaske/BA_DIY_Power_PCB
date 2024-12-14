@@ -14,6 +14,7 @@ void app_main(void)
     int32_t Current_W = 0;
     int32_t Current_bridge =0;
     int16_t enc_counter = 0;
+    uint16_t menu_counter = 0;
     bool Hall_A_On = false;
     bool Hall_B_On = false;
     bool Hall_C_On = false;
@@ -22,12 +23,15 @@ void app_main(void)
     float Speed_AB = 0.0;
     float duty = 0.0;
     char display_message[50]; // Puffer für die Nachricht
+    bool enc_but_state = false;
+    bool in_menu = false;
     ESP_LOGI(TAG, "Test");
     configure_GPIO_dir(TAG);
     adc_oneshot_unit_handle_t adc1_handle = configure_ADC1(TAG);    
     SSD1306_t *dev_pt = configure_OLED(TAG);
     conf_mcpwm_timers();
-    int i =3;
+    int i =0;
+    set_enc_in_counter(menu_counter);
     
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
     while (1) {
@@ -43,51 +47,46 @@ void app_main(void)
         Hall_B_On = get_Hall(CONFIG_HALL_B_GPIO);
         Hall_C_On = get_Hall(CONFIG_HALL_C_GPIO);
         */
-        int a = gpio_get_level(CONFIG_IN_ENC_A_GPIO);
-        int b = gpio_get_level(CONFIG_IN_ENC_B_GPIO);
-        ESP_LOGI("ENCODER_IN", "A=%d B=%d",a ,b);
-        Speed_indx = get_speed_index();
-        Speed_AB = get_speed_AB();
-        direction = get_direction();
-        enc_counter = get_enc_in_counter();
-        Current_bridge = get_current_bridge(adc1_handle, CONFIG_I_SENSE_ADC);
-        if (Voltage_IN >= 20000){
-            ssd1306_display_text(dev_pt, 1, "Bridge=ON", 10, false);
-        switch (i)
-        {
-        case 0:
-            
-            break;
-        case 1:
-           
-            break;
-        case 2:
-           
-            break;
-        case 3:
-            
-            break;
-        case 4:
-           
-            break;
-        case 5:
-           
-            i=0;
-            break;
-
         
-        default:
+        //Speed_indx = get_speed_index();
+        //Speed_AB = get_speed_AB();
+        //direction = get_direction();
        
-            break;
+        
+        menu_counter = get_enc_in_counter();
+        if (menu_counter >= 4){
+        menu_counter=0;
+        set_enc_in_counter(0);
         }
-      
-        }else{
-            
-            
+        enc_but_state = get_enc_in_but();
+        if (enc_but_state){
+            in_menu ^= 1;
         }
-        snprintf(display_message, sizeof(display_message), "count: %i", enc_counter);
-        ssd1306_display_text(dev_pt, 1, display_message, 10, false);
-        snprintf(display_message, sizeof(display_message), "Torque: %lu", Torque);
+        //Current_bridge = get_current_bridge(adc1_handle, CONFIG_I_SENSE_ADC);
+        gpio_set_level(CONFIG_LIN_U_GPIO,1);
+             
+        
+        snprintf(display_message, sizeof(display_message), "PWM-Param.");
+        ssd1306_display_text(dev_pt, 1, display_message, strlen(display_message), false);
+
+        snprintf(display_message, sizeof(display_message), "PWMFreq.: %i   ", enc_counter);
+        ssd1306_display_text(dev_pt, 3, display_message, 14, !(menu_counter));
+
+        snprintf(display_message, sizeof(display_message), "Duty: %i     ", enc_counter);
+        ssd1306_display_text(dev_pt, 4, display_message, 14, !(menu_counter-1));
+
+        snprintf(display_message, sizeof(display_message), "DeadTime: %i  ", enc_counter);
+        ssd1306_display_text(dev_pt, 5, display_message, 14, !(menu_counter-2));
+
+        if (in_menu){
+        snprintf(display_message, sizeof(display_message), "Active:press     ");
+        }
+        else{
+        snprintf(display_message, sizeof(display_message), "Active:not press");
+        }
+        ssd1306_display_text(dev_pt, 7, display_message, 14, !(menu_counter-3));
+
+       /* snprintf(display_message, sizeof(display_message), "Torque: %lu", Torque);
         ssd1306_display_text(dev_pt, 2, display_message, 11, false);    
 
         snprintf(display_message, sizeof(display_message), "Voltage: %lu",Voltage_IN);
@@ -104,9 +103,9 @@ void app_main(void)
 
         snprintf(display_message, sizeof(display_message), "W: %ldmA",Current_W);
         ssd1306_display_text(dev_pt, 7, display_message, strlen(display_message), false);
-        //gpio_set_level(CONFIG_RFE_GPIO,0);
+        *///gpio_set_level(CONFIG_RFE_GPIO,0);
        
-        vTaskDelay(500 / portTICK_PERIOD_MS);  // Verzögerung für die Task-Schleife
+        vTaskDelay(100 / portTICK_PERIOD_MS);  // Verzögerung für die Task-Schleife
         //i++;
     }
 }

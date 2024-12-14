@@ -16,6 +16,7 @@
 #include "hal/mcpwm_types.h"
 #include "driver/mcpwm_prelude.h"
 #include "esp_timer.h"
+#include <math.h>
 
 
 #define HIN_U_CH 0
@@ -38,17 +39,6 @@ uint32_t get_voltage_in(adc_oneshot_unit_handle_t adc1_handle);
 uint32_t get_torque(adc_oneshot_unit_handle_t adc1_handle);
 int32_t get_current_ASC712(adc_oneshot_unit_handle_t adc1_handle, int ADC_pin);
 int32_t get_current_bridge(adc_oneshot_unit_handle_t adc1_handle, int ADC_pin);
-void set_PWM_Timer();
-void set_PWM();
-void pwmStart(int PWM_CH,int Duty);
-void pwmStop(int PWM_CH);
-void pwmStopAll();
-void U_V_start(int duty);
-void V_U_start(int duty);
-void U_W_start(int duty);
-void W_U_start(int duty);
-void V_W_start(int duty);
-void W_V_start(int duty);
 bool get_Hall(int HallSensorGPIO);
 int get_direction();
 float get_speed_index();
@@ -58,8 +48,12 @@ void IRAM_ATTR index_isr_handler(void *arg);
 void IRAM_ATTR enc_ab_isr_handler(void *arg);
 void IRAM_ATTR enc_in_a_isr_handler(void *arg);
 void IRAM_ATTR enc_in_b_isr_handler(void *arg);
-int16_t get_enc_in_counter();
-void parse_3pins(const char *TAG, const char *pin_string, int *pins);
+void IRAM_ATTR enc_in_but_isr_handler(void *arg);
 SSD1306_t *configure_OLED(const char *TAG);
+int16_t get_enc_in_counter();
+void set_enc_in_counter(int16_t inital_value);
+bool get_enc_in_but();
+
+
 
 #endif // MY_COMPONENT_H
