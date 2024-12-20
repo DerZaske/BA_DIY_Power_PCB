@@ -475,7 +475,7 @@ void IRAM_ATTR enc_in_a_isr_handler(void *arg) {
         last_interrupt_time_a = interrupt_time; // Entprellzeit zurücksetzen
         // Bestimmen der Richtung anhand des Zustands von Pin A und B
         if (gpio_get_level(CONFIG_IN_ENC_A_GPIO)==gpio_get_level(CONFIG_IN_ENC_B_GPIO)) {
-            enc_in_counter--; // Drehung nach links
+            enc_in_counter++; // Drehung nach links
         }
         
     }
@@ -489,7 +489,7 @@ void IRAM_ATTR enc_in_b_isr_handler(void *arg) {
         last_interrupt_time_b = interrupt_time; // Entprellzeit zurücksetzen
         // Bestimmen der Richtung anhand des Zustands von Pin A und B
         if (gpio_get_level(CONFIG_IN_ENC_A_GPIO)==gpio_get_level(CONFIG_IN_ENC_B_GPIO)) {
-            enc_in_counter++;
+            enc_in_counter--;
         }
 
     }
