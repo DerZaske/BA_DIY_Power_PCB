@@ -18,6 +18,7 @@ void app_main(void)
     bool Hall_A_On = false;
     bool Hall_B_On = false;
     bool Hall_C_On = false;
+    bool RFE_Pulled = false;
     int direction = 0;
     float Speed_indx = 0.0;
     float Speed_AB = 0.0;
@@ -32,6 +33,7 @@ void app_main(void)
     conf_mcpwm_timers();
     int i =0;
     set_enc_in_counter(menu_counter);
+        
     
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
     while (1) {
@@ -51,7 +53,11 @@ void app_main(void)
         //Speed_indx = get_speed_index();
         //Speed_AB = get_speed_AB();
         //direction = get_direction();
-       
+
+    
+        RFE_Pulled = !(gpio_get_level(CONFIG_RFE_GPIO));
+
+        
         
         menu_counter = get_enc_in_counter();
         if (menu_counter >= 4){
@@ -63,7 +69,7 @@ void app_main(void)
             in_menu ^= 1;
         }
         //Current_bridge = get_current_bridge(adc1_handle, CONFIG_I_SENSE_ADC);
-        gpio_set_level(CONFIG_LIN_U_GPIO,1);
+        //gpio_set_level(CONFIG_LIN_U_GPIO,1);
              
         
         snprintf(display_message, sizeof(display_message), "PWM-Param.");
@@ -78,11 +84,11 @@ void app_main(void)
         snprintf(display_message, sizeof(display_message), "DeadTime: %i  ", enc_counter);
         ssd1306_display_text(dev_pt, 5, display_message, 14, !(menu_counter-2));
 
-        if (in_menu){
-        snprintf(display_message, sizeof(display_message), "Active:press     ");
+        if (RFE_Pulled){
+        snprintf(display_message, sizeof(display_message), "RFE pulled");
         }
         else{
-        snprintf(display_message, sizeof(display_message), "Active:not press");
+        snprintf(display_message, sizeof(display_message), "RFE not pulled");
         }
         ssd1306_display_text(dev_pt, 7, display_message, 14, !(menu_counter-3));
 

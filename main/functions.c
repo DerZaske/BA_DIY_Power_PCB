@@ -13,7 +13,7 @@ portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
 uint64_t last_AB_time = 0;    // Definition der Variablen
 
-adc_cali_handle_t cali_handle= NULL;
+adc_cali_handle_t cali_handle = NULL;
 
 /*############################################*/
 /*############### GPIO-Setup #################*/
@@ -44,6 +44,13 @@ void configure_GPIO_dir(const char *TAG)
     gpio_reset_pin(CONFIG_EXT_ENC_RIGHT_GPIO);
     gpio_reset_pin(CONFIG_RFE_GPIO);
 
+    gpio_config_t io_conf_RFE = {};
+    io_conf_RFE.intr_type = GPIO_INTR_DISABLE; // Keine Interrupts
+    io_conf_RFE.mode = GPIO_MODE_INPUT;        // Als Eingang setzen
+    io_conf_RFE.pin_bit_mask = (1ULL << CONFIG_RFE_GPIO); // Pin festlegen
+    io_conf_RFE.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf_RFE.pull_up_en = GPIO_PULLUP_ENABLE;     // Pull-up-Widerstand aktivieren
+    gpio_config(&io_conf_RFE);
     /* Set the GPIO as a push/pull output
     gpio_set_direction(CONFIG_HIN_U_GPIO, GPIO_MODE_OUTPUT);
     gpio_set_direction(CONFIG_HIN_V_GPIO, GPIO_MODE_OUTPUT);
@@ -381,9 +388,8 @@ void conf_mcpwm_timers(){
     ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_U_HIN, generator_U_LIN, &deadtime_config));
    //ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_V_HIN, generator_V_LIN, &deadtime_config));
    //ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_HIN, generator_W_LIN, &deadtime_config));
-
-
     }
+    
 /*############################################*/
 /*############ Blockkommutierung #############*/
 /*############################################*/
