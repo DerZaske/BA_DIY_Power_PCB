@@ -75,17 +75,17 @@ void app_main(void)
         snprintf(display_message, sizeof(display_message), "PWM-Param.");
         ssd1306_display_text(dev_pt, 1, display_message, strlen(display_message), false);
 
-        snprintf(display_message, sizeof(display_message), "PWMFreq.: %i   ", enc_counter);
+        snprintf(display_message, sizeof(display_message), "PWMFreq.: %ik   ", (CONFIG_FREQ_PWM/1000));
         ssd1306_display_text(dev_pt, 3, display_message, 14, !(menu_counter));
 
-        snprintf(display_message, sizeof(display_message), "Duty: %i     ", enc_counter);
+        snprintf(display_message, sizeof(display_message), "Duty: %i     ", CONFIG_DUTY_PWM);
         ssd1306_display_text(dev_pt, 4, display_message, 14, !(menu_counter-1));
 
-        snprintf(display_message, sizeof(display_message), "DeadTime: %i  ", enc_counter);
+        snprintf(display_message, sizeof(display_message), "DeadTime: %i  ", CONFIG_DEAD_TIME_PWM);
         ssd1306_display_text(dev_pt, 5, display_message, 14, !(menu_counter-2));
 
         if (RFE_Pulled){
-        snprintf(display_message, sizeof(display_message), "RFE pulled");
+        snprintf(display_message, sizeof(display_message), "RFE pulled   ");
         }
         else{
         snprintf(display_message, sizeof(display_message), "RFE not pulled");
