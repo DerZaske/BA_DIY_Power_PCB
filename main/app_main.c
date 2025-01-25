@@ -30,6 +30,7 @@ void app_main(void)
     configure_GPIO_dir(TAG);
     adc_oneshot_unit_handle_t adc1_handle = configure_ADC1(TAG);    
     SSD1306_t *dev_pt = configure_OLED(TAG);
+    gpio_set_level(CONFIG_HIN_U_GPIO,1);
     conf_mcpwm_timers();
     int i =0;
     set_enc_in_counter(menu_counter);
