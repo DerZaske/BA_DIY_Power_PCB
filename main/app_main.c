@@ -1,9 +1,22 @@
 /* 
 This is the first try of a Test-Software for the DIY Power PCB by Fabian Zaske
 */
+#include <stdio.h>
+#include <stdlib.h>
 #include "functions.h"
+#include "GPIO.h"
+#include "mcpwm.h"
+#include "ADC.h"
+#include "string.h"
 
-const char *TAG = "Main_test";
+#include "esp_log.h"
+#include "driver/gpio.h"
+#include "string.h"
+#include "parsed_pins.h"
+#include "sdkconfig.h"
+#include <stdbool.h>
+#include <stdint.h>
+
 
 void app_main(void)
 {
@@ -26,12 +39,11 @@ void app_main(void)
     char display_message[50]; // Puffer für die Nachricht
     bool enc_but_state = false;
     bool in_menu = false;
-    ESP_LOGI(TAG, "Test");
-    configure_GPIO_dir(TAG);
-    adc_oneshot_unit_handle_t adc1_handle = configure_ADC1(TAG);    
-    SSD1306_t *dev_pt = configure_OLED(TAG);
+    configure_GPIO_dir();
+   
+    SSD1306_t *dev_pt = configure_OLED();
     gpio_set_level(CONFIG_HIN_U_GPIO,1);
-    conf_mcpwm_timers();
+    mcpwm_init();
     int i =0;
     set_enc_in_counter(menu_counter);
         

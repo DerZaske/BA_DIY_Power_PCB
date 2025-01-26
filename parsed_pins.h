@@ -1,4 +1,6 @@
 // Automatically generated file. Do not modify.
+#ifndef PARSED_PINS_H
+#define PARSED_PINS_H
 
 #define CONFIG_I_SENSE_U_ADC 6
 #define CONFIG_I_SENSE_V_ADC 3
@@ -24,3 +26,4 @@
 #define CONFIG_EXT_ENC_LEFT_GPIO 18
 #define CONFIG_EXT_ENC_RIGHT_GPIO 5
 
+#endif

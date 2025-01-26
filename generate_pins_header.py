@@ -26,7 +26,7 @@ with open(sdkconfig_path, "r") as f:
 
 # Header-Datei erzeugen
 with open(header_path, "w") as header:
-    header.write("// Automatically generated file. Do not modify.\n\n")
+    header.write("// Automatically generated file. Do not modify.\n#ifndef PARSED_PINS_H\n#define PARSED_PINS_H\n\n")
 
     for config_var, pin1_name, pin2_name, pin3_name in config_entries:
         # Suche nach dem Konfigurationswert
@@ -47,5 +47,6 @@ with open(header_path, "w") as header:
             print(f"Parsed {config_var}: {pins[0].strip()}, {pins[1].strip()}, {pins[2].strip()}")
         else:
             print(f"Warning: {config_var} not found in sdkconfig")
+    header.write("#endif")
 
 print(f"Header file '{header_path}' generated successfully.")

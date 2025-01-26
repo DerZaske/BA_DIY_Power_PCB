@@ -132,7 +132,7 @@ menu "SSD1306 Configuration"
 	config RESET_GPIO
 		int "RESET GPIO number"
 		range -1 GPIO_RANGE_MAX
-		default 15 if IDF_TARGET_ESP32
+		default -1 if IDF_TARGET_ESP32
 		default 38 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 		default  4 # C3 and others
 		help
