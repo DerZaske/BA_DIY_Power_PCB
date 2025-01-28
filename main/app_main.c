@@ -20,31 +20,33 @@ This is the first try of a Test-Software for the DIY Power PCB by Fabian Zaske
 
 void app_main(void)
 {
-    uint32_t Torque = 0;
+   
+   
+   /* uint32_t Torque = 0;
     uint32_t Voltage_IN = 0;
     int32_t Current_U = 0;
     int32_t Current_V = 0;
     int32_t Current_W = 0;
     int32_t Current_bridge =0;
     int16_t enc_counter = 0;
-    uint16_t menu_counter = 0;
     bool Hall_A_On = false;
     bool Hall_B_On = false;
     bool Hall_C_On = false;
-    bool RFE_Pulled = false;
     int direction = 0;
     float Speed_indx = 0.0;
-    float Speed_AB = 0.0;
-    float duty = 0.0;
+    float Speed_AB = 0.0;*/
+
+    bool RFE_Pulled = false;
+    uint16_t menu_counter = 0;
+    float duty = (float)CONFIG_DUTY_PWM;
     char display_message[50]; // Puffer für die Nachricht
     bool enc_but_state = false;
     bool in_menu = false;
+
     configure_GPIO_dir();
-   
     SSD1306_t *dev_pt = configure_OLED();
-    gpio_set_level(CONFIG_HIN_U_GPIO,1);
     mcpwm_init();
-    int i =0;
+    set_mcpwm_output(PHASE_U,PHASE_V,duty);
     set_enc_in_counter(menu_counter);
         
     
@@ -70,9 +72,6 @@ void app_main(void)
     
         RFE_Pulled = !(gpio_get_level(CONFIG_RFE_GPIO));
 
-        
-        
-        menu_counter = get_enc_in_counter();
         if (menu_counter >= 4){
         menu_counter=0;
         set_enc_in_counter(0);
@@ -80,6 +79,19 @@ void app_main(void)
         enc_but_state = get_enc_in_but();
         if (enc_but_state){
             in_menu ^= 1;
+        }
+        if (in_menu){
+            switch(menu_counter){
+                case 0:
+                
+                break;
+                case 1:
+                set_enc_in_counter(0);
+                break;
+            }
+
+        }else{
+            menu_counter = get_enc_in_counter();
         }
         //Current_bridge = get_current_bridge(adc1_handle, CONFIG_I_SENSE_ADC);
         //gpio_set_level(CONFIG_LIN_U_GPIO,1);
@@ -91,7 +103,7 @@ void app_main(void)
         snprintf(display_message, sizeof(display_message), "PWMFreq.: %ik   ", (CONFIG_FREQ_PWM/1000));
         ssd1306_display_text(dev_pt, 3, display_message, 14, !(menu_counter));
 
-        snprintf(display_message, sizeof(display_message), "Duty: %i     ", CONFIG_DUTY_PWM);
+        snprintf(display_message, sizeof(display_message), "Duty: %.1f     ", duty);
         ssd1306_display_text(dev_pt, 4, display_message, 14, !(menu_counter-1));
 
         snprintf(display_message, sizeof(display_message), "DeadTime: %i  ", CONFIG_DEAD_TIME_PWM);

@@ -35,15 +35,8 @@ static volatile bool enc_in_button_state = false;
 
 void configure_GPIO_dir()
 {
-    /* reset every used GPIO-pin *
-    gpio_reset_pin(CONFIG_HIN_U_GPIO);
-    gpio_reset_pin(CONFIG_HIN_V_GPIO);
-    gpio_reset_pin(CONFIG_HIN_W_GPIO);
-*/
-    gpio_reset_pin(CONFIG_LIN_U_GPIO);
-  //  gpio_reset_pin(CONFIG_LIN_V_GPIO);
-   // gpio_reset_pin(CONFIG_LIN_W_GPIO);
-
+    /* reset every used GPIO-pin */  
+   
     gpio_reset_pin(CONFIG_HALL_A_GPIO);
     gpio_reset_pin(CONFIG_HALL_B_GPIO);
     gpio_reset_pin(CONFIG_HALL_C_GPIO);
@@ -51,7 +44,6 @@ void configure_GPIO_dir()
     gpio_reset_pin(CONFIG_IN_ENC_A_GPIO); 
     gpio_reset_pin(CONFIG_IN_ENC_B_GPIO);
     gpio_reset_pin(CONFIG_IN_ENC_BUT_GPIO);
-    //gpio_reset_pin(CONFIG_BUTTON_GPIO);
 
     
     gpio_reset_pin(CONFIG_EXT_ENC_LEFT_GPIO);
@@ -66,15 +58,8 @@ void configure_GPIO_dir()
     io_conf_RFE.pull_up_en = GPIO_PULLUP_DISABLE;     // Pull-up-Widerstand deaktivieren
     gpio_config(&io_conf_RFE);
     
-    /* Set the GPIO as a push/pull output
-    gpio_set_direction(CONFIG_HIN_U_GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_direction(CONFIG_HIN_V_GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_direction(CONFIG_HIN_W_GPIO, GPIO_MODE_OUTPUT);*/
-
-   gpio_set_direction(CONFIG_LIN_U_GPIO, GPIO_MODE_OUTPUT);
-  //  gpio_set_direction(CONFIG_LIN_V_GPIO, GPIO_MODE_OUTPUT);
-  //  gpio_set_direction(CONFIG_LIN_W_GPIO, GPIO_MODE_OUTPUT);
-
+    /* Set the GPIO as a push/pull output*/
+    
     gpio_set_direction(CONFIG_HALL_A_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_HALL_B_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_HALL_C_GPIO, GPIO_MODE_INPUT);

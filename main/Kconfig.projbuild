@@ -80,8 +80,8 @@ menu "DIY Power PCB Configuration"
         endif
         config DEAD_TIME_PWM
             int "time (ns)"
-            range 25 10000
-            default 500
+            range 0 10000
+            default 0
             help 
                 Deadtime
     endmenu

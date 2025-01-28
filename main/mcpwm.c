@@ -27,13 +27,16 @@ static mcpwm_gen_handle_t generator_U_LIN = NULL;
 static mcpwm_gen_handle_t generator_V_LIN = NULL;
 static mcpwm_gen_handle_t generator_W_LIN = NULL;
 
+static Phase HighsidePhase;
+static Phase LowsidePhase;
+uint32_t periode_ticks = CONFIG_TIMER_BASE_FREQ/CONFIG_FREQ_PWM;
 /*############################################*/
 /*############### MCPWM-Setup ################*/
 /*############################################*/
 void mcpwm_init(){
    ESP_LOGI("MCPWM","started");
    
-   uint32_t periode_ticks = CONFIG_TIMER_BASE_FREQ/CONFIG_FREQ_PWM;
+   
    double tick_period_ns = 1e9 / CONFIG_TIMER_BASE_FREQ; // Zeit pro Tick in ns
    uint32_t dead_time_ticks = (uint32_t)round(CONFIG_DEAD_TIME_PWM / tick_period_ns);
 
@@ -160,33 +163,97 @@ void mcpwm_init(){
     };
     ESP_ERROR_CHECK(mcpwm_new_generator(operator_W, &generator_W_LIN_config, &generator_W_LIN));
 
-    //set generator action on timer event    
-   /* ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_U_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_U, MCPWM_GEN_ACTION_LOW)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_U_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_U, MCPWM_GEN_ACTION_LOW)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_V_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_V_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_V, MCPWM_GEN_ACTION_LOW)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_V_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_V_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_V, MCPWM_GEN_ACTION_LOW)));
-   */ ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_W_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_W, MCPWM_GEN_ACTION_LOW)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_W_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
-    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_W, MCPWM_GEN_ACTION_LOW)));
-    
     //set Dead times
     mcpwm_dead_time_config_t deadtime_config = {
         .posedge_delay_ticks = dead_time_ticks,
         .negedge_delay_ticks = 0,
     };
 
-   // ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_U_HIN, generator_U_HIN,&deadtime_config));
-   // ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_V_HIN, generator_V_HIN,&deadtime_config));
+    ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_U_HIN, generator_U_HIN,&deadtime_config));
+    ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_V_HIN, generator_V_HIN,&deadtime_config));
     ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_HIN, generator_W_HIN,&deadtime_config));
     deadtime_config.posedge_delay_ticks = 0;
     deadtime_config.negedge_delay_ticks = dead_time_ticks;
-    //ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_U_HIN, generator_U_LIN, &deadtime_config));
-   //ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_V_HIN, generator_V_LIN, &deadtime_config));
-   ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_HIN, generator_W_LIN, &deadtime_config));
+    ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_U_HIN, generator_U_LIN, &deadtime_config));
+    ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_V_HIN, generator_V_LIN, &deadtime_config));
+     ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_HIN, generator_W_LIN, &deadtime_config));
+
     }
-    
+static void set_gen(Phase phase){
+    switch (phase) {
+
+        case PHASE_U:
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_U_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_U, MCPWM_GEN_ACTION_LOW)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_U_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_U, MCPWM_GEN_ACTION_LOW)));
+            break;
+
+        case PHASE_V:
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_V_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_V_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_V, MCPWM_GEN_ACTION_LOW)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_V_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_V_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_V, MCPWM_GEN_ACTION_LOW)));
+            break;
+
+        case PHASE_W:
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_W_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_W, MCPWM_GEN_ACTION_LOW)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_W_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_W, MCPWM_GEN_ACTION_LOW)));
+            break;
+
+        default:
+            printf("Invalid phase selection\n");
+            break;
+    }
+}
+static void set_lowside(Phase lowside){
+    LowsidePhase = lowside;
+    switch (lowside){
+        case PHASE_U:
+        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_U, 0));
+        break;
+        case PHASE_V:
+        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_V, 0));
+        break;
+        case PHASE_W:
+        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_W, 0));
+        break;
+
+        default:
+            printf("Invalid phase selection\n");
+            break;
+    }
+}
+static void set_highside(Phase highside, float Duty){
+    HighsidePhase = highside;
+    switch (highside){
+        
+        case PHASE_U:
+        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_U, periode_ticks*Duty/100));
+        break;
+        case PHASE_V:
+        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_V, periode_ticks*Duty/100));
+        break;
+        case PHASE_W:
+        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_W, periode_ticks*Duty/100));
+        break;
+
+        default:
+            printf("Invalid phase selection\n");
+            break;
+    }
+}
+
+
+void set_mcpwm_output(Phase highside, Phase lowside, float Duty){
+    set_highside(highside, Duty);
+    set_gen(highside);
+    set_lowside(lowside);
+    set_gen(lowside);
+}
+
+void set_mcpwm_duty(float Duty){
+    set_highside(HighsidePhase, Duty);
+}
