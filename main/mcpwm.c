@@ -7,14 +7,32 @@
 #include "parsed_pins.h"
 #include "sdkconfig.h"
 
+//create Timers
+static mcpwm_timer_handle_t timer_U = NULL;
+static mcpwm_timer_handle_t timer_V = NULL;
+static mcpwm_timer_handle_t timer_W = NULL;
+//create Operators
+static mcpwm_oper_handle_t operator_U = NULL;
+static mcpwm_oper_handle_t operator_V = NULL;
+static mcpwm_oper_handle_t operator_W = NULL; 
+//create PWM-Signals
+static mcpwm_cmpr_handle_t comperator_U = NULL;
+static mcpwm_cmpr_handle_t comperator_V = NULL;
+static mcpwm_cmpr_handle_t comperator_W = NULL;
+//create generators for every pin
+static mcpwm_gen_handle_t generator_U_HIN = NULL;
+static mcpwm_gen_handle_t generator_V_HIN = NULL;
+static mcpwm_gen_handle_t generator_W_HIN = NULL;
+static mcpwm_gen_handle_t generator_U_LIN = NULL;
+static mcpwm_gen_handle_t generator_V_LIN = NULL;
+static mcpwm_gen_handle_t generator_W_LIN = NULL;
+
 /*############################################*/
 /*############### MCPWM-Setup ################*/
 /*############################################*/
 void mcpwm_init(){
    ESP_LOGI("MCPWM","started");
-   mcpwm_timer_handle_t timer_U = NULL;
-   mcpwm_timer_handle_t timer_V = NULL;
-   mcpwm_timer_handle_t timer_W = NULL;
+   
    uint32_t periode_ticks = CONFIG_TIMER_BASE_FREQ/CONFIG_FREQ_PWM;
    double tick_period_ns = 1e9 / CONFIG_TIMER_BASE_FREQ; // Zeit pro Tick in ns
    uint32_t dead_time_ticks = (uint32_t)round(CONFIG_DEAD_TIME_PWM / tick_period_ns);
@@ -64,10 +82,7 @@ void mcpwm_init(){
     };
     ESP_ERROR_CHECK(mcpwm_timer_set_phase_on_sync(timer_W,&sync_phase_W_config));    
 
-//create Operators
-    mcpwm_oper_handle_t operator_U = NULL;
-    mcpwm_oper_handle_t operator_V = NULL;
-    mcpwm_oper_handle_t operator_W = NULL; 
+
 
     //Operator for Timer_U
     mcpwm_operator_config_t operator_config = 
@@ -83,10 +98,7 @@ void mcpwm_init(){
     ESP_ERROR_CHECK(mcpwm_operator_connect_timer(operator_V, timer_V));
     ESP_ERROR_CHECK(mcpwm_operator_connect_timer(operator_W, timer_W));
 
-    //create PWM-Signals
-    mcpwm_cmpr_handle_t comperator_U = NULL;
-    mcpwm_cmpr_handle_t comperator_V = NULL;
-    mcpwm_cmpr_handle_t comperator_W = NULL;
+    
 
     mcpwm_comparator_config_t comparator_config = {
         .flags.update_cmp_on_tez = true,
@@ -100,13 +112,7 @@ void mcpwm_init(){
     ESP_ERROR_CHECK(mcpwm_new_comparator(operator_W, &comparator_config,&comperator_W));
     ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_W,periode_ticks*CONFIG_DUTY_PWM/100));
 
-//create generators for every pin
-    mcpwm_gen_handle_t generator_U_HIN = NULL;
-    mcpwm_gen_handle_t generator_V_HIN = NULL;
-    mcpwm_gen_handle_t generator_W_HIN = NULL;
-    mcpwm_gen_handle_t generator_U_LIN = NULL;
-    mcpwm_gen_handle_t generator_V_LIN = NULL;
-    mcpwm_gen_handle_t generator_W_LIN = NULL;
+
     mcpwm_gen_handle_t *mcpwm_gens[] ={&generator_U_HIN,&generator_U_LIN,&generator_V_HIN,&generator_V_LIN,&generator_W_HIN,&generator_W_LIN};
 //HIN Pins
     //HIN_U
