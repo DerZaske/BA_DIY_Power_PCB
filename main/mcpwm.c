@@ -1,6 +1,4 @@
 #include "mcpwm.h"
-#include "hal/mcpwm_types.h"
-#include "driver/mcpwm_prelude.h"
 #include "esp_timer.h"
 #include "esp_log.h"
 #include "math.h"
@@ -256,4 +254,10 @@ void set_mcpwm_output(Phase highside, Phase lowside, float Duty){
 
 void set_mcpwm_duty(float Duty){
     set_highside(HighsidePhase, Duty);
+}
+
+void get_comps(mcpwm_cmpr_handle_t comps[3]) {
+    comps[0] = comperator_U;
+    comps[1] = comperator_V;
+    comps[2] = comperator_W;
 }

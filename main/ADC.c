@@ -6,16 +6,15 @@
 #include "parsed_pins.h"
 
 
-portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
-adc_cali_handle_t cali_handle = NULL;
+static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+static adc_cali_handle_t cali_handle = NULL;
+static adc_oneshot_unit_handle_t adc1_handle = NULL;
 
 /*############################################*/
 /*################ ADC-Setup #################*/
 /*############################################*/
-adc_oneshot_unit_handle_t configure_ADC1() 
-{
-    adc_oneshot_unit_handle_t adc1_handle;
-    
+void configure_ADC1() 
+{    
     // ADC1 Initialisierung
     adc_oneshot_unit_init_cfg_t init_config = {
         .unit_id = ADC_UNIT_1,
@@ -48,10 +47,9 @@ adc_oneshot_unit_handle_t configure_ADC1()
         cali_handle = NULL;  // Keine Kalibrierung verfügbar
     }
 
-    return adc1_handle;
 }
 
-static uint32_t read_voltage(adc_oneshot_unit_handle_t adc1_handle, int channel) {
+static uint32_t read_voltage(int channel) {
     int adc_raw = 0;
     int voltage_calibrated = 0;  // Verwende int für die Kalibrierungsfunktion
     uint32_t voltage = 0;         // Konvertiere später zu uint32_t
@@ -71,31 +69,31 @@ static uint32_t read_voltage(adc_oneshot_unit_handle_t adc1_handle, int channel)
 }
 
 // Funktion zur Umrechnung in spezifische Spannung
-uint32_t get_voltage_in(adc_oneshot_unit_handle_t adc1_handle)
+uint32_t get_voltage_in()
 {
-    uint32_t adc_voltage = read_voltage(adc1_handle, CONFIG_U_SENSE_ADC);
+    uint32_t adc_voltage = read_voltage(CONFIG_U_SENSE_ADC);
     ESP_LOGI("ADC", "ADC%d:voltage:%ld", CONFIG_U_SENSE_ADC, adc_voltage);
     uint32_t voltage_in = adc_voltage / 0.0909;
     return voltage_in;
 }
 
-int32_t get_current_ASC712(adc_oneshot_unit_handle_t adc1_handle, int ADC_pin)
+int32_t get_current_ASC712(int ADC_pin)
 {
-    int32_t adc_voltage = read_voltage(adc1_handle,ADC_pin);
+    int32_t adc_voltage = read_voltage(ADC_pin);
     int32_t current = (adc_voltage -2500)*5.405;
     ESP_LOGI("ADC", "ADC%d:voltage:%ldcurrent%ld", ADC_pin, adc_voltage, current);
     return current;
 }
 
-uint32_t get_torque(adc_oneshot_unit_handle_t adc1_handle)
+uint32_t get_torque()
 {
-    uint32_t adc_voltage =read_voltage(adc1_handle,CONFIG_TORQUE_ADC);
+    uint32_t adc_voltage =read_voltage(CONFIG_TORQUE_ADC);
     uint32_t torque = adc_voltage/33;
 
     return torque;
 }
-int32_t get_current_bridge(adc_oneshot_unit_handle_t adc1_handle, int ADC_pin){
-    int32_t adc_voltage = read_voltage(adc1_handle,ADC_pin);
+int32_t get_current_bridge(int ADC_pin){
+    int32_t adc_voltage = read_voltage(ADC_pin);
      ESP_LOGI("CurrentBridge", "ADC:%ld",adc_voltage);
     int32_t current = ((adc_voltage- 142)/6.77)/0.007;
     return current;

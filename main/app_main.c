@@ -48,17 +48,17 @@ void app_main(void)
     mcpwm_init();
     set_mcpwm_output(PHASE_U,PHASE_V,duty);
     set_enc_in_counter(menu_counter);
-        
+    
     
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
     while (1) {
         //ssd1306_clear_screen(dev_pt, false);
         /* Die Anzeige der OLED mit der richtigen Nachricht
-        Torque = get_torque(adc1_handle);
-        Voltage_IN = get_voltage_in(adc1_handle);
-        Current_U = get_current_ASC712(adc1_handle,CONFIG_I_SENSE_U_ADC);
-        Current_V = get_current_ASC712(adc1_handle,CONFIG_I_SENSE_V_ADC);
-        Current_W = get_current_ASC712(adc1_handle,CONFIG_I_SENSE_W_ADC);
+        Torque = get_torque();
+        Voltage_IN = get_voltage_in();
+        Current_U = get_current_ASC712(CONFIG_I_SENSE_U_ADC);
+        Current_V = get_current_ASC712(CONFIG_I_SENSE_V_ADC);
+        Current_W = get_current_ASC712(CONFIG_I_SENSE_W_ADC);
         */
        /* Hall_A_On = get_Hall(CONFIG_HALL_A_GPIO);
         Hall_B_On = get_Hall(CONFIG_HALL_B_GPIO);
@@ -103,7 +103,7 @@ void app_main(void)
         snprintf(display_message, sizeof(display_message), "PWMFreq.: %ik   ", (CONFIG_FREQ_PWM/1000));
         ssd1306_display_text(dev_pt, 3, display_message, 14, !(menu_counter));
 
-        snprintf(display_message, sizeof(display_message), "Duty: %.1f     ", duty);
+        snprintf(display_message, sizeof(display_message), "Duty: %.1f%%  ", duty);
         ssd1306_display_text(dev_pt, 4, display_message, 14, !(menu_counter-1));
 
         snprintf(display_message, sizeof(display_message), "DeadTime: %i  ", CONFIG_DEAD_TIME_PWM);
