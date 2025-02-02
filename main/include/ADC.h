@@ -1,9 +1,6 @@
 #ifndef GPIO_H
 #define GPIO_H
-
-#include "esp_adc/adc_oneshot.h"
-
-
+#include <stdint.h>
 void configure_ADC1();
 uint32_t get_voltage_in();
 uint32_t get_torque();

@@ -4,7 +4,7 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_log.h"
 #include "parsed_pins.h"
-
+#include "esp_adc/adc_oneshot.h"
 
 static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 static adc_cali_handle_t cali_handle = NULL;
