@@ -44,7 +44,7 @@ void mcpwm_init(){
     {
         .group_id = 0,
         .clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT,
-        .resolution_hz = 40000000, //40MHz
+        .resolution_hz = CONFIG_TIMER_BASE_FREQ, //40MHz
         .period_ticks = periode_ticks,      //40MHz/2KHz = 20KHz
         .count_mode = MCPWM_TIMER_COUNT_MODE_UP_DOWN,
     };
@@ -170,7 +170,7 @@ void mcpwm_init(){
     deadtime_config.negedge_delay_ticks = dead_time_ticks;
     ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_U_HIN, generator_U_LIN, &deadtime_config));
     ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_V_HIN, generator_V_LIN, &deadtime_config));
-     ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_HIN, generator_W_LIN, &deadtime_config));
+    ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_HIN, generator_W_LIN, &deadtime_config));
 
     }
 static void set_gen(Phase phase){

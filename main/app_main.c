@@ -76,27 +76,7 @@ void app_main(void)
     
         RFE_Pulled = !(gpio_get_level(CONFIG_RFE_GPIO));
 
-        if (menu_counter >= 4){
-        menu_counter=0;
-        set_enc_in_counter(0);
-        }
-        enc_but_state = get_enc_in_but();
-        if (enc_but_state){
-            in_menu ^= 1;
-        }
-        if (in_menu){
-            switch(menu_counter){
-                case 0:
-                
-                break;
-                case 1:
-                set_enc_in_counter(0);
-                break;
-            }
-
-        }else{
-            menu_counter = get_enc_in_counter();
-        }
+        get_enc_in_counter();
         //Current_bridge = get_current_bridge(adc1_handle, CONFIG_I_SENSE_ADC);
         //gpio_set_level(CONFIG_LIN_U_GPIO,1);
              

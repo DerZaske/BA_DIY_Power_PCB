@@ -20,11 +20,13 @@ static volatile int64_t last_AB_time = 0;
 //internal Encoder
 static void IRAM_ATTR enc_in_a_isr_handler(void *arg);
 static void IRAM_ATTR enc_in_b_isr_handler(void *arg);
+static void IRAM_ATTR enc_in_isr_handler(void *arg);
 static void IRAM_ATTR enc_in_but_isr_handler(void *arg);
 
 static volatile int16_t enc_in_counter = 0;
 static volatile int64_t last_interrupt_time_a = 0; // Entprellungs-Timer
 static volatile int64_t last_interrupt_time_b = 0; // Entprellungs-Timer
+static volatile int64_t last_interrupt_time = 0;
 static volatile uint16_t last_interrupt_time_but = 0;
 static volatile bool enc_in_button_state = false;
 
@@ -96,8 +98,8 @@ void configure_GPIO_dir()
     gpio_install_isr_service(0);
     ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_EXT_ENC_INDX_GPIO, index_isr_handler, NULL));
     ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_HALL_A_GPIO, enc_ab_isr_handler, NULL));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_A_GPIO, enc_in_a_isr_handler, NULL));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_B_GPIO, enc_in_b_isr_handler, NULL));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_A_GPIO, enc_in_isr_handler, NULL));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_B_GPIO, enc_in_isr_handler, NULL));
     ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_BUT_GPIO, enc_in_but_isr_handler, NULL));
 }
 
@@ -165,7 +167,7 @@ static void IRAM_ATTR enc_in_a_isr_handler(void *arg) {
     uint64_t interrupt_time = esp_timer_get_time();
     
     // Entprellung: Verhindert die Erfassung von Störungen aufgrund von Prellung
-    if (interrupt_time - last_interrupt_time_a > (CONFIG_IN_ENCODER_DEBOUNCE_TIME*1000)) {  //  Entprellungszeit
+    if (interrupt_time - last_interrupt_time_a > (CONFIG_IN_ENCODER_DEBOUNCE_TIME)) {  //  Entprellungszeit
         last_interrupt_time_a = interrupt_time; // Entprellzeit zurücksetzen
         // Bestimmen der Richtung anhand des Zustands von Pin A und B
         if (gpio_get_level(CONFIG_IN_ENC_A_GPIO)==gpio_get_level(CONFIG_IN_ENC_B_GPIO)) {
@@ -179,13 +181,39 @@ static void IRAM_ATTR enc_in_b_isr_handler(void *arg) {
    uint64_t interrupt_time = esp_timer_get_time();
     
     // Entprellung: Verhindert die Erfassung von Störungen aufgrund von Prellung
-    if (interrupt_time - last_interrupt_time_b > (CONFIG_IN_ENCODER_DEBOUNCE_TIME*1000)) {  //  Entprellungszeit
+    if (interrupt_time - last_interrupt_time_b > (CONFIG_IN_ENCODER_DEBOUNCE_TIME)) {  //  Entprellungszeit
         last_interrupt_time_b = interrupt_time; // Entprellzeit zurücksetzen
         // Bestimmen der Richtung anhand des Zustands von Pin A und B
         if (gpio_get_level(CONFIG_IN_ENC_A_GPIO)==gpio_get_level(CONFIG_IN_ENC_B_GPIO)) {
             enc_in_counter--;
         }
 
+    }
+}
+
+static volatile uint8_t last_state = 0;
+
+static void IRAM_ATTR enc_in_isr_handler(void *arg) {
+    static uint64_t last_interrupt_time = 0;
+    
+    // Aktueller Zustand der Pins lesen
+    uint8_t current_state = (gpio_get_level(CONFIG_IN_ENC_A_GPIO) << 1) | gpio_get_level(CONFIG_IN_ENC_B_GPIO);
+    uint64_t interrupt_time = esp_timer_get_time();
+
+    // Zustandswechsel-Logik (FSM) ohne starre Entprellzeit
+    if (current_state != last_state) { 
+        // Nur wenn der Wechsel signifikant verzögert ist (gute Flanke)
+        if ((interrupt_time - last_interrupt_time) > CONFIG_IN_ENCODER_DEBOUNCE_TIME) {
+            if ((last_state == 0b01 && current_state == 0b11) || 
+                (last_state == 0b10 && current_state == 0b00)) {
+                enc_in_counter++;  // Vorwärtsdrehen
+            } else if ((last_state == 0b10 && current_state == 0b11) || 
+                       (last_state == 0b01 && current_state == 0b00)) {
+                enc_in_counter--;  // Rückwärtsdrehen
+            }
+            last_state = current_state;  // Zustand aktualisieren
+            last_interrupt_time = interrupt_time;
+        }
     }
 }
 
