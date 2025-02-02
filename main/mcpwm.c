@@ -28,6 +28,7 @@ static mcpwm_gen_handle_t generator_W_LIN = NULL;
 static Phase HighsidePhase;
 static Phase LowsidePhase;
 uint32_t periode_ticks = CONFIG_TIMER_BASE_FREQ/CONFIG_FREQ_PWM;
+float duty = CONFIG_DUTY_PWM;
 /*############################################*/
 /*############### MCPWM-Setup ################*/
 /*############################################*/
@@ -45,7 +46,7 @@ void mcpwm_init(){
         .clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT,
         .resolution_hz = 40000000, //40MHz
         .period_ticks = periode_ticks,      //40MHz/2KHz = 20KHz
-        .count_mode = MCPWM_TIMER_COUNT_MODE_UP,
+        .count_mode = MCPWM_TIMER_COUNT_MODE_UP_DOWN,
     };
     ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config, &timer_U));
     ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config, &timer_V));
@@ -72,14 +73,14 @@ void mcpwm_init(){
     mcpwm_timer_sync_phase_config_t sync_phase_V_config = 
     {
         .sync_src = sync_signal,
-        .count_value = periode_ticks/3, //120 degree delayed
+        .count_value = periode_ticks/6, //120 degree delayed
     };
     ESP_ERROR_CHECK(mcpwm_timer_set_phase_on_sync(timer_V,&sync_phase_V_config));
 //set Timer_W as an Slave of Timer_U with another phase 
     mcpwm_timer_sync_phase_config_t sync_phase_W_config = 
     {
         .sync_src = sync_signal,
-        .count_value = periode_ticks*2/3, //240 degree delayed
+        .count_value = periode_ticks*2/6, //240 degree delayed
     };
     ESP_ERROR_CHECK(mcpwm_timer_set_phase_on_sync(timer_W,&sync_phase_W_config));    
 
@@ -105,13 +106,8 @@ void mcpwm_init(){
         .flags.update_cmp_on_tez = true,
     };
     ESP_ERROR_CHECK(mcpwm_new_comparator(operator_U, &comparator_config,&comperator_U));
-    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_U, periode_ticks*CONFIG_DUTY_PWM/100));//Duty_cycle from Config
-
     ESP_ERROR_CHECK(mcpwm_new_comparator(operator_V, &comparator_config,&comperator_V));
-    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_V, periode_ticks*CONFIG_DUTY_PWM/100));
-
     ESP_ERROR_CHECK(mcpwm_new_comparator(operator_W, &comparator_config,&comperator_W));
-    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_W,periode_ticks*CONFIG_DUTY_PWM/100));
 
 
     mcpwm_gen_handle_t *mcpwm_gens[] ={&generator_U_HIN,&generator_U_LIN,&generator_V_HIN,&generator_V_LIN,&generator_W_HIN,&generator_W_LIN};
@@ -181,24 +177,28 @@ static void set_gen(Phase phase){
     switch (phase) {
 
         case PHASE_U:
-        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_U_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
         ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_U, MCPWM_GEN_ACTION_LOW)));
-        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_U_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_DOWN, comperator_U, MCPWM_GEN_ACTION_HIGH)));
         ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_U, MCPWM_GEN_ACTION_LOW)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_DOWN, comperator_U, MCPWM_GEN_ACTION_HIGH)));
+        
+        
             break;
 
         case PHASE_V:
-        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_V_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
         ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_V_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_V, MCPWM_GEN_ACTION_LOW)));
-        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_V_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_V_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_DOWN, comperator_V, MCPWM_GEN_ACTION_HIGH)));
         ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_V_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_V, MCPWM_GEN_ACTION_LOW)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_V_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_DOWN, comperator_V, MCPWM_GEN_ACTION_HIGH)));
+
+       
             break;
 
         case PHASE_W:
-        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_W_HIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
         ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_W, MCPWM_GEN_ACTION_LOW)));
-        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(generator_W_LIN, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_DOWN, comperator_W, MCPWM_GEN_ACTION_HIGH)));
         ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_W, MCPWM_GEN_ACTION_LOW)));
+        ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_W_LIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_DOWN, comperator_W, MCPWM_GEN_ACTION_HIGH)));
             break;
 
         default:
@@ -224,18 +224,18 @@ static void set_lowside(Phase lowside){
             break;
     }
 }
-static void set_highside(Phase highside, float Duty){
+static void set_highside(Phase highside){
     HighsidePhase = highside;
     switch (highside){
         
         case PHASE_U:
-        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_U, periode_ticks*Duty/100));
+        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_U, (periode_ticks*duty/100)/2));
         break;
         case PHASE_V:
-        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_V, periode_ticks*Duty/100));
+        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_V, (periode_ticks*duty/100)/2));
         break;
         case PHASE_W:
-        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_W, periode_ticks*Duty/100));
+        ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_W, (periode_ticks*duty/100)/2));
         break;
 
         default:
@@ -245,19 +245,60 @@ static void set_highside(Phase highside, float Duty){
 }
 
 
-void set_mcpwm_output(Phase highside, Phase lowside, float Duty){
-    set_highside(highside, Duty);
+esp_err_t set_mcpwm_output(Phase highside, Phase lowside){
+    if (timer_U == NULL) {
+        return ESP_ERR_INVALID_STATE; // Fehlerbehandlung, wenn mcpwm nicht initialisiert wurde
+    }
+    set_highside(highside);
     set_gen(highside);
     set_lowside(lowside);
     set_gen(lowside);
+    return ESP_OK;
 }
 
-void set_mcpwm_duty(float Duty){
-    set_highside(HighsidePhase, Duty);
+esp_err_t set_mcpwm_duty(float new_duty){
+    if (timer_U == NULL) {
+        return ESP_ERR_INVALID_STATE; // Fehlerbehandlung, wenn mcpwm nicht initialisiert wurde
+    }
+    duty = new_duty;
+    set_highside(HighsidePhase);
+    return ESP_OK;
+}
+
+esp_err_t set_mcpwm_frequenzy(uint16_t frequency){
+
+    if (timer_U == NULL) {
+        return ESP_ERR_INVALID_STATE; // Fehlerbehandlung, wenn mcpwm nicht initialisiert wurde
+    }
+    periode_ticks = CONFIG_TIMER_BASE_FREQ/frequency;
+
+    // Timer stoppen, wenn er läuft
+    ESP_ERROR_CHECK(mcpwm_timer_disable(timer_U));
+    ESP_ERROR_CHECK(mcpwm_timer_disable(timer_V));
+    ESP_ERROR_CHECK(mcpwm_timer_disable(timer_W));
+
+    // Neue Konfiguration anwenden
+    
+    ESP_ERROR_CHECK(mcpwm_timer_set_period(timer_U, periode_ticks));
+    ESP_ERROR_CHECK(mcpwm_timer_set_period(timer_V, periode_ticks));
+    ESP_ERROR_CHECK(mcpwm_timer_set_period(timer_W, periode_ticks));
+
+    // dutycycle an neue Frequenz anpassen
+    set_mcpwm_duty(duty);
+
+    // Timer wieder starten
+    ESP_ERROR_CHECK(mcpwm_timer_enable(timer_U));
+    ESP_ERROR_CHECK(mcpwm_timer_enable(timer_V));
+    ESP_ERROR_CHECK(mcpwm_timer_enable(timer_W));
+
+    return ESP_OK;
 }
 
 void get_comps(mcpwm_cmpr_handle_t comps[3]) {
     comps[0] = comperator_U;
     comps[1] = comperator_V;
     comps[2] = comperator_W;
+}
+float get_duty() {
+    return duty;
 }

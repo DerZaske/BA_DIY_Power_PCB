@@ -39,16 +39,20 @@ void app_main(void)
     bool RFE_Pulled = false;
     uint16_t menu_counter = 0;
     float duty = (float)CONFIG_DUTY_PWM;
+    duty = 75.0;
     char display_message[50]; // Puffer für die Nachricht
     bool enc_but_state = false;
     bool in_menu = false;
+    uint16_t mcpwm_freq = CONFIG_FREQ_PWM;
 
     configure_GPIO_dir();
     SSD1306_t *dev_pt = configure_OLED();
     mcpwm_init();
-    set_mcpwm_output(PHASE_U,PHASE_V,duty);
+    set_mcpwm_output(PHASE_U,PHASE_V);
     set_enc_in_counter(menu_counter);
-    
+    mcpwm_freq = 40000;
+    set_mcpwm_duty(duty);
+    set_mcpwm_frequenzy(mcpwm_freq);
     
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
     while (1) {
@@ -100,10 +104,10 @@ void app_main(void)
         snprintf(display_message, sizeof(display_message), "PWM-Param.");
         ssd1306_display_text(dev_pt, 1, display_message, strlen(display_message), false);
 
-        snprintf(display_message, sizeof(display_message), "PWMFreq.: %ik   ", (CONFIG_FREQ_PWM/1000));
+        snprintf(display_message, sizeof(display_message), "PWMFreq.: %ik   ", (mcpwm_freq/1000));
         ssd1306_display_text(dev_pt, 3, display_message, 14, !(menu_counter));
 
-        snprintf(display_message, sizeof(display_message), "Duty: %.1f%%  ", duty);
+        snprintf(display_message, sizeof(display_message), "Duty: %.1f%%  ", get_duty());
         ssd1306_display_text(dev_pt, 4, display_message, 14, !(menu_counter-1));
 
         snprintf(display_message, sizeof(display_message), "DeadTime: %i  ", CONFIG_DEAD_TIME_PWM);
