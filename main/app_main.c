@@ -48,11 +48,12 @@ void app_main(void)
     configure_GPIO_dir();
     SSD1306_t *dev_pt = configure_OLED();
     mcpwm_init();
-    set_mcpwm_output(PHASE_U,PHASE_V);
+    set_mcpwm_output(PHASE_U, PHASE_V, PHASE_W);
     set_enc_in_counter(menu_counter);
     mcpwm_freq = 40000;
     set_mcpwm_duty(duty);
-    set_mcpwm_frequenzy(mcpwm_freq);
+    set_mcpwm_frequency(mcpwm_freq);
+    set_mcpwm_output(PHASE_U, PHASE_W, PHASE_V);
     
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
     while (1) {
