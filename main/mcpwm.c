@@ -36,8 +36,6 @@ float duty = CONFIG_DUTY_PWM;
 /*############################################*/
 void mcpwm_init(){
    ESP_LOGI("MCPWM","started");
-   
-   
    double tick_period_ns = 1e9 / CONFIG_TIMER_BASE_FREQ; // Zeit pro Tick in ns
    uint32_t dead_time_ticks = (uint32_t)round(CONFIG_DEAD_TIME_PWM / tick_period_ns);
 
