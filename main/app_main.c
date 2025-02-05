@@ -39,7 +39,7 @@ void app_main(void)
     bool RFE_Pulled = false;
     uint16_t menu_counter = 0;
     float duty = (float)CONFIG_DUTY_PWM;
-    duty = 75.0;
+    duty = 15.0;
     char display_message[50]; // Puffer für die Nachricht
     bool enc_but_state = false;
     bool in_menu = false;
@@ -50,11 +50,11 @@ void app_main(void)
     mcpwm_init();
     set_mcpwm_output(PHASE_U, PHASE_V, PHASE_W);
     set_enc_in_counter(menu_counter);
-    mcpwm_freq = 40000;
+    mcpwm_freq = 20000;
     set_mcpwm_duty(duty);
     set_mcpwm_frequency(mcpwm_freq);
     set_mcpwm_output(PHASE_U, PHASE_W, PHASE_V);
-    
+   
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
     while (1) {
         //ssd1306_clear_screen(dev_pt, false);
@@ -77,7 +77,8 @@ void app_main(void)
     
         RFE_Pulled = !(gpio_get_level(CONFIG_RFE_GPIO));
 
-        get_enc_in_counter();
+        duty = get_enc_in_counter();
+        set_mcpwm_duty(duty);
         //Current_bridge = get_current_bridge(adc1_handle, CONFIG_I_SENSE_ADC);
         //gpio_set_level(CONFIG_LIN_U_GPIO,1);
              

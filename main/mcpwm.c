@@ -67,7 +67,7 @@ void mcpwm_init(){
     mcpwm_sync_handle_t sync_signal = NULL;
     mcpwm_timer_sync_src_config_t sync_src_config = 
     {
-        .flags.propagate_input_sync = false,
+        .flags.propagate_input_sync = SOC_FLASH_ENCRYPTED_XTS_AES_BLOCK_MAX,
         .timer_event = MCPWM_TIMER_EVENT_EMPTY,
 
     };
@@ -176,7 +176,7 @@ void mcpwm_init(){
     ESP_ERROR_CHECK(mcpwm_generator_set_dead_time(generator_W_HIN, generator_W_LIN, &deadtime_config));
 
     }
-static void conf_gens(Phase phase){
+static void conf_gens(){
             
         ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, comperator_U, MCPWM_GEN_ACTION_LOW)));
         ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(generator_U_HIN, MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_DOWN, comperator_U, MCPWM_GEN_ACTION_HIGH)));
@@ -205,12 +205,12 @@ static void set_lowside(Phase lowside){
         ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_U_LIN, 0,true));
         break;
         case PHASE_V:
-        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_U_HIN, 0,true));
-        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_U_LIN, 0,true));
+        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_V_HIN, 0,true));
+        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_V_LIN, 0,true));
         break;
         case PHASE_W:
-        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_U_HIN, 0,true));
-        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_U_LIN, 0,true));
+        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_W_HIN, 0,true));
+        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_W_LIN, 0,true));
         break;
 
         default:
@@ -227,12 +227,12 @@ static void set_highside(Phase highside){
         ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_U_LIN, -1,true));
         break;
         case PHASE_V:
-        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_U_HIN, -1,true));
-        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_U_LIN, -1,true));
+        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_V_HIN, -1,true));
+        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_V_LIN, -1,true));
         break;
         case PHASE_W:
-        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_U_HIN, -1,true));
-        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_U_LIN, -1,true));
+        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_W_HIN, -1,true));
+        ESP_ERROR_CHECK(mcpwm_generator_set_force_level(generator_W_LIN, -1,true));
         break;
 
         default:
@@ -265,10 +265,11 @@ esp_err_t set_mcpwm_output(Phase highside, Phase lowside, Phase inactive){
     if (timer_U == NULL) {
         return ESP_ERR_INVALID_STATE; // Fehlerbehandlung, wenn mcpwm nicht initialisiert wurde
     }
-    conf_gen();
+    set_mcpwm_duty(duty);
     set_inactive(inactive);
     set_highside(highside);
     set_lowside(lowside);
+    conf_gens();
     return ESP_OK;
 }
 
@@ -277,7 +278,9 @@ esp_err_t set_mcpwm_duty(float new_duty){
         return ESP_ERR_INVALID_STATE; // Fehlerbehandlung, wenn mcpwm nicht initialisiert wurde
     }
     duty = new_duty;
-    conf_gen();
+    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_U, (periode_ticks*duty/100)/2));
+    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_V, (periode_ticks*duty/100)/2));
+    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comperator_W, (periode_ticks*duty/100)/2));
     return ESP_OK;
 }
 
