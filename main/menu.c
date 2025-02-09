@@ -73,7 +73,7 @@ static void IRAM_ATTR enc_in_but_isr_handler(void *arg) {
     // Entprellung: Verhindert die Erfassung von Störungen aufgrund von Prellung
     if (interrupt_time - last_interrupt_time_but > (CONFIG_IN_ENCODER_DEBOUNCE_TIME*1000)) {  //  Entprellungszeit
         last_interrupt_time_but = interrupt_time; // Entprellzeit zurücksetzen
-        if (gpio_get_level(CONFIG_IN_ENC_A_GPIO)) {
+        if (gpio_get_level(CONFIG_IN_ENC_BUT_GPIO)) {
             enc_in_button_flag = true;
         }
 
