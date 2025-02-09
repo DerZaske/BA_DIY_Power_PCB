@@ -17,11 +17,6 @@ static volatile int64_t last_index_time = 0;
 static volatile int64_t delta_AB_time = 0;
 static volatile int64_t last_AB_time = 0;
 
-
-//internal Encoder
-static void IRAM_ATTR enc_in_isr_handler(void *arg);
-static void IRAM_ATTR enc_in_but_isr_handler(void *arg);
-
 static volatile int16_t enc_in_counter = 0;
 static volatile int64_t last_interrupt_time = 0;
 static volatile uint16_t last_interrupt_time_but = 0;

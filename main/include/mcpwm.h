@@ -26,8 +26,8 @@ void stop_mcpwm_output();
 void configure_mcpwm_output(OutCombis out_combi);
 esp_err_t start_mcpwm_output();
 esp_err_t set_mcpwm_duty(float duty);
-esp_err_t set_mcpwm_frequency(uint16_t frequency);
+esp_err_t set_mcpwm_frequency(uint32_t frequency);
 void get_comps(mcpwm_cmpr_handle_t comps[3]);
 float get_duty();
-uint16_t get_frequency();
+uint32_t get_frequency();
 #endif

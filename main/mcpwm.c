@@ -40,7 +40,7 @@ PhaseConfiguration phase_configurations[3] = {
             { PHASE_V, Lowside },
             { PHASE_W, OFF }
             };
-uint16_t mcpwm_frequency = CONFIG_FREQ_PWM;
+uint32_t mcpwm_frequency = CONFIG_FREQ_PWM;
 uint32_t periode_ticks = CONFIG_TIMER_BASE_FREQ/CONFIG_FREQ_PWM;
 float duty = CONFIG_DUTY_PWM;
 
@@ -369,7 +369,7 @@ void configure_mcpwm_output(OutCombis out_combi) {
 }
 
 
-esp_err_t set_mcpwm_frequency(uint16_t frequency_new){
+esp_err_t set_mcpwm_frequency(uint32_t frequency_new){
 
     if (timer_U == NULL) {
         return ESP_ERR_INVALID_STATE; // Fehlerbehandlung, wenn mcpwm nicht initialisiert wurde
@@ -395,6 +395,6 @@ void get_comps(mcpwm_cmpr_handle_t comps[3]) {
 float get_duty() {
     return duty;
 }
-uint16_t get_frequency(){
+uint32_t get_frequency(){
     return mcpwm_frequency;
 }

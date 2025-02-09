@@ -49,9 +49,9 @@ void app_main(void)
     configure_OLED();
     config_internal_Encoder();
     mcpwm_init();
+    configure_ADC1();
     
-    
-    
+    int Speed_AB = get_speed_AB();
    
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
     while (1) {
@@ -70,7 +70,7 @@ void app_main(void)
         
         
         //Speed_indx = get_speed_index();
-        //Speed_AB = get_speed_AB();
+        //
         //direction = get_direction();
 
     

@@ -9,9 +9,13 @@
 #include "freertos/task.h"
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
+#include "GPIO.h"
 #include "menu.h"
 #include "esp_timer.h"
 #include "mcpwm.h"
+#include "ADC.h"
+#include "functions.h"
+
 
 
 /*############################################*/
@@ -144,8 +148,9 @@ volatile bool ShouldState = false; //false==deaktive
 int cursor_position = 0;
 int max_cursor_pos = 0;
 bool in_editing = false;
-char display_message[20]; // Puffer für die Nachricht
+char display_message[100]; // Puffer für die Nachricht
 bool flag;
+uint16_t PWM_Frequency = 0;
 static void check_button_pressed(){
     if (enc_in_button_flag){
     enc_in_button_flag=false;
@@ -185,13 +190,42 @@ static void check_button_pressed(){
                     break;
                 }
                 break;
+
             case CONFIGURE_MENU:
                 switch(cursor_position){
-
+                case 0:
+                    if(in_editing){
+                      set_mcpwm_frequency(enc_in_counter*1000);
+                      in_editing = false;
+                      enc_in_counter= cursor_position;  
+                    }else{
+                        in_editing = true;
+                        enc_in_counter = get_frequency()/1000;
+                    }
+                
+                break;
+                case 1:
+                    if(in_editing){
+                        set_mcpwm_duty((float)enc_in_counter);
+                        in_editing = false;
+                        enc_in_counter = cursor_position;  
+                    }else{
+                        in_editing = true;
+                        enc_in_counter = (int)get_duty();
+                    }
+                break;
+                case 3:
+                current_menu = MAIN_MENU;
+                enc_in_counter=0;
+                break;
                 }
-
+            break;
+            case MORE_INFO_MENU:
+                current_menu = MAIN_MENU;
+                enc_in_counter=0;
+                break;
             default:
-                ESP_LOGE("Menu","Not yet programmed");
+                ESP_LOGE("Error","Not yet programmed");
                 break;
         }
     }
@@ -236,7 +270,6 @@ static void render_main_menu(){
     getset_bridge_state();
     snprintf(display_message, sizeof(display_message), "State: %s",state_names[current_bridge_state]);
     ssd1306_display_text(&dev, 6, display_message, strlen(display_message), true);
-
     
     /*snprintf(display_message, sizeof(display_message), "cursor: %i %s",cursor_position,enc_in_button_flag ?"in" : "out");
     ssd1306_display_text(&dev, 7, display_message, strlen(display_message), true);
@@ -244,6 +277,7 @@ static void render_main_menu(){
     
 static void render_config_menu(){
 max_cursor_pos = 3;
+
 switch(current_mode){
     case MCPWM_MODE:
     //Titel
@@ -251,19 +285,30 @@ switch(current_mode){
     ssd1306_display_text(&dev, 1, display_message, strlen(display_message), false);
 
     //Frequenz
-    snprintf(display_message, sizeof(display_message), "PWMFreq.: %ik   ", (get_frequency()/1000));
-    ssd1306_display_text(&dev, 2, display_message, strlen(display_message), cursor_position == 0);
-
+    if(in_editing && cursor_position == 0){
+        snprintf(display_message, sizeof(display_message), "PWMFreq.:%ikHz", enc_in_counter);
+        ssd1306_display_text(&dev, 2, display_message, strlen(display_message), true);
+        set_mcpwm_frequency(enc_in_counter*1000);
+    }else{
+        snprintf(display_message, sizeof(display_message), "PWMFreq.:%lukHz", (get_frequency()/1000));
+        ssd1306_display_text(&dev, 2, display_message, strlen(display_message), cursor_position == 0);
+        
+    }
     //Duty cycle
-    snprintf(display_message, sizeof(display_message), "Duty: %.1f%%   ", get_duty());
-    ssd1306_display_text(&dev, 3, display_message, strlen(display_message), cursor_position == 1);
-
+    if(in_editing && cursor_position == 1){
+        snprintf(display_message, sizeof(display_message), "Duty: %.1f%%", (float)enc_in_counter);
+        ssd1306_display_text(&dev, 3, display_message, strlen(display_message), cursor_position == 1);
+        set_mcpwm_duty((float)enc_in_counter);
+    }else{
+        snprintf(display_message, sizeof(display_message), "Duty: %.1f%%", get_duty());
+        ssd1306_display_text(&dev, 3, display_message, strlen(display_message), cursor_position == 1);
+    }
     //Todzeit
-    snprintf(display_message, sizeof(display_message), "DeadTime: %ins  ", CONFIG_DEAD_TIME_PWM);
+    snprintf(display_message, sizeof(display_message), "DeadTime: %ins", CONFIG_DEAD_TIME_PWM);
     ssd1306_display_text(&dev, 4, display_message, strlen(display_message), cursor_position == 2);
 
     //Back
-    snprintf(display_message, sizeof(display_message), "    Back    ");
+    snprintf(display_message, sizeof(display_message), "Back");
     ssd1306_display_text(&dev, 5, display_message, strlen(display_message), cursor_position == 3);
 
     //State
@@ -273,23 +318,64 @@ switch(current_mode){
 
     break;
     default:
-
+    break;
 }
 }
 
 static void render_info_menu(){
-max_cursor_pos = 8;
+max_cursor_pos = 1;
+switch(current_mode){
+    case MCPWM_MODE:
+    
+    //cur_U & Hall_A
+    snprintf(display_message, sizeof(display_message), "U:%ldmA H_A:%c", get_current_ASC712(CONFIG_I_SENSE_U_ADC),get_Hall(CONFIG_HALL_A_GPIO)?'1':'0');
+    ssd1306_display_text(&dev, 1, display_message, strlen(display_message), false);
+    //cur_V & Hall_B
+    snprintf(display_message, sizeof(display_message), "V:%ldmA H_B:%c", get_current_ASC712(CONFIG_I_SENSE_V_ADC),get_Hall(CONFIG_HALL_B_GPIO)?'1':'0');
+    ssd1306_display_text(&dev, 2, display_message, strlen(display_message), false);
+    //cur_W & Hall_C
+    snprintf(display_message, sizeof(display_message), "W:%ldmA H_C:%c", get_current_ASC712(CONFIG_I_SENSE_W_ADC),get_Hall(CONFIG_HALL_C_GPIO)?'1':'0');
+    ssd1306_display_text(&dev, 3, display_message, strlen(display_message), false);
+    //Bridge Current & Speed
+    snprintf(display_message, sizeof(display_message), "B:%ldmA SP.:%frpm", get_current_bridge(CONFIG_I_SENSE_ADC), get_speed_AB());
+    ssd1306_display_text(&dev, 4, display_message, strlen(display_message), false);
+    //Bridge Voltage & Torque
+    snprintf(display_message, sizeof(display_message), "U_in:%ldmV Torq.:%ldmV", get_voltage_in(), get_torque());
+    ssd1306_display_text(&dev, 5, display_message, strlen(display_message), false);
+    //Left/right
+    snprintf(display_message, sizeof(display_message), "Dir.:%s", 
+    (get_direction() == -1) ? "Error" :
+    (get_direction() == 0) ? "Right" : "Left");
+    ssd1306_display_text(&dev, 6, display_message, strlen(display_message), false);
+    //Back
+    snprintf(display_message, sizeof(display_message), "Back");
+    ssd1306_display_text(&dev, 7, display_message, strlen(display_message), true);
+
+    break;
+    default:
+    break;
+
+    }
 }
 
-
+MenuState last_menu = MAIN_MENU; // Initialisiere mit dem Startmenü
 void menu_loop(){
+
+    
+    
+    if(!in_editing){
     if (enc_in_counter<0){
-        enc_in_counter = max_cursor_pos;
+       enc_in_counter = max_cursor_pos;
     }
     if (enc_in_counter> max_cursor_pos){
-        enc_in_counter =0;
+         enc_in_counter =0;
     }
     cursor_position = enc_in_counter;
+    }
+    if (current_menu != last_menu) {
+        ssd1306_clear_screen(&dev, false); // Clear the screen on menu change
+        last_menu = current_menu;   // Update to the new menu state
+    }
     switch (current_menu)
     {
     case MAIN_MENU:
