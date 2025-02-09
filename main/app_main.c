@@ -3,12 +3,12 @@ This is the first try of a Test-Software for the DIY Power PCB by Fabian Zaske
 */
 #include <stdio.h>
 #include <stdlib.h>
-#include "functions.h"
+
 #include "GPIO.h"
 #include "mcpwm.h"
 #include "ADC.h"
 #include "string.h"
-
+#include "menu.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "string.h"
@@ -46,17 +46,16 @@ void app_main(void)
     uint16_t mcpwm_freq = CONFIG_FREQ_PWM;
 
     configure_GPIO_dir();
-    SSD1306_t *dev_pt = configure_OLED();
+    configure_OLED();
+    config_internal_Encoder();
     mcpwm_init();
-    set_mcpwm_output(PHASE_U, PHASE_V, PHASE_W);
-    set_enc_in_counter(menu_counter);
-    mcpwm_freq = 20000;
-    set_mcpwm_duty(duty);
-    set_mcpwm_frequency(mcpwm_freq);
-    set_mcpwm_output(PHASE_U, PHASE_W, PHASE_V);
+    
+    
+    
    
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
     while (1) {
+        menu_loop();
         //ssd1306_clear_screen(dev_pt, false);
         /* Die Anzeige der OLED mit der richtigen Nachricht
         Torque = get_torque();
@@ -68,7 +67,7 @@ void app_main(void)
        /* Hall_A_On = get_Hall(CONFIG_HALL_A_GPIO);
         Hall_B_On = get_Hall(CONFIG_HALL_B_GPIO);
         Hall_C_On = get_Hall(CONFIG_HALL_C_GPIO);
-        */
+        
         
         //Speed_indx = get_speed_index();
         //Speed_AB = get_speed_AB();
@@ -103,7 +102,7 @@ void app_main(void)
         }
         ssd1306_display_text(dev_pt, 7, display_message, 14, !(menu_counter-3));
 
-       /* snprintf(display_message, sizeof(display_message), "Torque: %lu", Torque);
+        snprintf(display_message, sizeof(display_message), "Torque: %lu", Torque);
         ssd1306_display_text(dev_pt, 2, display_message, 11, false);    
 
         snprintf(display_message, sizeof(display_message), "Voltage: %lu",Voltage_IN);
@@ -120,9 +119,9 @@ void app_main(void)
 
         snprintf(display_message, sizeof(display_message), "W: %ldmA",Current_W);
         ssd1306_display_text(dev_pt, 7, display_message, strlen(display_message), false);
-        *///gpio_set_level(CONFIG_RFE_GPIO,0);
-       
-        vTaskDelay(100 / portTICK_PERIOD_MS);  // Verzögerung für die Task-Schleife
+        ///gpio_set_level(CONFIG_RFE_GPIO,0);
+       */
+        //vTaskDelay(100 / portTICK_PERIOD_MS);  // Verzögerung für die Task-Schleife
         //i++;
     }
 }

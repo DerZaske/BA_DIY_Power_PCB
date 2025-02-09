@@ -12,8 +12,8 @@ float get_speed_index();
 float get_speed_AB();
 
 //functions for internal Encoder
-int16_t get_enc_in_counter();
-void set_enc_in_counter(int16_t inital_value);
-bool get_enc_in_but();
+//int16_t get_enc_in_counter();
+//void set_enc_in_counter(int16_t inital_value);
+//bool get_enc_in_but();
 
 #endif

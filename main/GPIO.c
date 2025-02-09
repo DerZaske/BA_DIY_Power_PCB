@@ -6,7 +6,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_timer.h"
-
+#include "driver/uart.h"
+#include "soc/io_mux_reg.h"
 //external Encoder
 static void IRAM_ATTR index_isr_handler(void *arg);
 static void IRAM_ATTR enc_ab_isr_handler(void *arg);
@@ -34,7 +35,13 @@ static volatile uint8_t last_state = 0;
 void configure_GPIO_dir()
 {
     /* reset every used GPIO-pin */  
-   
+   uart_driver_delete(UART_NUM_0);
+    // GPIO1 als GPIO konfigurieren (anstatt als UART0 TX)
+    PIN_FUNC_SELECT(IO_MUX_GPIO1_REG, PIN_FUNC_GPIO);
+    
+    // GPIO3 als GPIO konfigurieren (anstatt als UART0 RX)
+    PIN_FUNC_SELECT(IO_MUX_GPIO3_REG, PIN_FUNC_GPIO);
+
     gpio_reset_pin(CONFIG_HALL_A_GPIO);
     gpio_reset_pin(CONFIG_HALL_B_GPIO);
     gpio_reset_pin(CONFIG_HALL_C_GPIO);
@@ -43,7 +50,7 @@ void configure_GPIO_dir()
     gpio_reset_pin(CONFIG_IN_ENC_B_GPIO);
     gpio_reset_pin(CONFIG_IN_ENC_BUT_GPIO);
 
-    
+   
     gpio_reset_pin(CONFIG_EXT_ENC_LEFT_GPIO);
     gpio_reset_pin(CONFIG_EXT_ENC_RIGHT_GPIO);
     
@@ -58,16 +65,17 @@ void configure_GPIO_dir()
     
     /* Set the GPIO as a push/pull output*/
     
+
     gpio_set_direction(CONFIG_HALL_A_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_HALL_B_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_HALL_C_GPIO, GPIO_MODE_INPUT);
 
     gpio_set_direction(CONFIG_IN_ENC_A_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_IN_ENC_B_GPIO, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(CONFIG_IN_ENC_A_GPIO, GPIO_PULLUP_ENABLE);
     gpio_set_pull_mode(CONFIG_IN_ENC_B_GPIO, GPIO_PULLUP_ENABLE);
     gpio_set_direction(CONFIG_IN_ENC_BUT_GPIO, GPIO_MODE_INPUT);
-    //gpio_set_direction(CONFIG_BUTTON_GPIO, GPIO_MODE_INPUT);
-
+    
     
     gpio_set_direction(CONFIG_EXT_ENC_LEFT_GPIO, GPIO_MODE_INPUT);
     gpio_set_direction(CONFIG_EXT_ENC_RIGHT_GPIO, GPIO_MODE_INPUT);
@@ -94,9 +102,7 @@ void configure_GPIO_dir()
     gpio_install_isr_service(0);
     ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_EXT_ENC_INDX_GPIO, index_isr_handler, NULL));
     ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_HALL_A_GPIO, enc_ab_isr_handler, NULL));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_A_GPIO, enc_in_isr_handler, NULL));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_B_GPIO, enc_in_isr_handler, NULL));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(CONFIG_IN_ENC_BUT_GPIO, enc_in_but_isr_handler, NULL));
+   
 }
 
 /*############################################*/
@@ -158,8 +164,7 @@ int get_direction(){//-1=Error,0=right,1=left
 
 /*############################################*/
 /*############ Internal Encoder ##############*/
-/*############################################*/
-
+/*############################################*
 
 static void IRAM_ATTR enc_in_isr_handler(void *arg) {
     static uint64_t last_interrupt_time = 0;
@@ -216,4 +221,4 @@ bool get_enc_in_but(){
     else{
         return false;
     }
-}
+}*/

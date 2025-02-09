@@ -9,7 +9,7 @@
 /*############################################*/
 /*############## Display-Setup ###############*/
 /*############################################*/
-SSD1306_t *configure_OLED()
+SSD1306_t *configure_OLED_old()
 {
     static SSD1306_t dev;
 	//int center, top, bottom;
