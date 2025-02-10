@@ -54,3 +54,31 @@ bool get_Hall(int HallSensorGPIO){
     }
     return level;
 }
+HallState get_Hall_Combi(){
+
+    int hall_A = gpio_get_level(CONFIG_HALL_A_GPIO);
+    int hall_B = gpio_get_level(CONFIG_HALL_B_GPIO);
+    int hall_C = gpio_get_level(CONFIG_HALL_C_GPIO);
+    
+    // Wandelt die GPIO-Levels in einen binären Wert um
+    return (HallState)((hall_A << 2) | (hall_B << 1) | hall_C);
+
+}
+OutCombis get_output_combination(HallState hall_state) {
+    switch (hall_state) {
+        case HALL_001:
+            return OUT_U_W;
+        case HALL_010:
+            return OUT_W_V;
+        case HALL_011:
+            return OUT_U_V;
+        case HALL_100:
+            return OUT_V_U;
+        case HALL_101:
+            return OUT_V_W;
+        case HALL_110:
+            return OUT_W_U;
+        default:
+            return COMBI_COUNT; // Ungültiger Zustand
+    }
+}

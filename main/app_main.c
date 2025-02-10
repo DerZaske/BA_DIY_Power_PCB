@@ -56,6 +56,7 @@ void app_main(void)
     //gpio_set_level(CONFIG_HIN_V_GPIO, 1);
     while (1) {
         menu_loop();
+        
         //ssd1306_clear_screen(dev_pt, false);
         /* Die Anzeige der OLED mit der richtigen Nachricht
         Torque = get_torque();

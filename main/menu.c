@@ -120,7 +120,8 @@ const char *mode_names[] = {
         "+W -V",
         " +U  ",
         " +V  ",
-        " +W  "
+        " +W  ",
+        "ERROR"
     };
 
 typedef enum {
@@ -233,8 +234,9 @@ static void check_button_pressed(){
 static void getset_bridge_state(){
 
 bool RFE_Pulled = !(gpio_get_level(CONFIG_RFE_GPIO));
-
-    if (RFE_Pulled){
+    if(get_voltage_in()<18000){
+    current_bridge_state=STATE_UV;
+    }else if (RFE_Pulled){
     current_bridge_state=STATE_OC;
     }else if(!ShouldState){
     current_bridge_state=STATE_DEAKTIVE;
@@ -244,7 +246,8 @@ bool RFE_Pulled = !(gpio_get_level(CONFIG_RFE_GPIO));
 }
 
 static void render_main_menu(){
-    max_cursor_pos = 4;
+    if(current_mode == BLDC_MODE)max_cursor_pos = 3;else max_cursor_pos=4;
+
     //Mode
     snprintf(display_message, sizeof(display_message), "Mode: %s", mode_names[current_mode]);
     ssd1306_display_text(&dev, 1, display_message, strlen(display_message), cursor_position == 0);
@@ -259,11 +262,11 @@ static void render_main_menu(){
 
     //More_Info_Menu
     snprintf(display_message, sizeof(display_message), "Sensor Info ->");
-    ssd1306_display_text(&dev, 4, display_message, strlen(display_message), cursor_position == 3);
+    ssd1306_display_text(&dev, 4, display_message, strlen(display_message),cursor_position == 3);
 
     //Output Selection
     snprintf(display_message, sizeof(display_message), "Out: %s",OutCombi_names[current_out_combi]);
-    ssd1306_display_text(&dev, 5, display_message, strlen(display_message), cursor_position == 4);
+    ssd1306_display_text(&dev, 5, display_message, strlen(display_message), (current_mode == BLDC_MODE)|(cursor_position == 4));
 
     
     //State
@@ -280,6 +283,7 @@ max_cursor_pos = 3;
 
 switch(current_mode){
     case MCPWM_MODE:
+    case BLDC_MODE:
     //Titel
     snprintf(display_message, sizeof(display_message), "Conf. MCPWM");
     ssd1306_display_text(&dev, 1, display_message, strlen(display_message), false);
@@ -324,9 +328,7 @@ switch(current_mode){
 
 static void render_info_menu(){
 max_cursor_pos = 1;
-switch(current_mode){
-    case MCPWM_MODE:
-    
+
     //cur_U & Hall_A
     snprintf(display_message, sizeof(display_message), "U:%ldmA H_A:%c", get_current_ASC712(CONFIG_I_SENSE_U_ADC),get_Hall(CONFIG_HALL_A_GPIO)?'1':'0');
     ssd1306_display_text(&dev, 1, display_message, strlen(display_message), false);
@@ -351,17 +353,22 @@ switch(current_mode){
     snprintf(display_message, sizeof(display_message), "Back");
     ssd1306_display_text(&dev, 7, display_message, strlen(display_message), true);
 
-    break;
-    default:
-    break;
-
-    }
+   
 }
 
 MenuState last_menu = MAIN_MENU; // Initialisiere mit dem Startmenü
+OutCombis last_out_combi = OUT_U_V;
 void menu_loop(){
-
+    if(current_mode== BLDC_MODE){
+        current_out_combi = get_output_combination(get_Hall_Combi());
     
+    if (current_out_combi != last_out_combi) {
+        configure_mcpwm_output(current_out_combi);
+        if(ShouldState){
+        start_mcpwm_output();
+        }
+        last_out_combi = current_out_combi;   // Update to the new out_combi
+    }}
     
     if(!in_editing){
     if (enc_in_counter<0){

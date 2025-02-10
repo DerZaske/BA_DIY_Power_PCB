@@ -80,7 +80,7 @@ uint32_t get_voltage_in()
 int32_t get_current_ASC712(int ADC_pin)
 {
     int32_t adc_voltage = read_voltage(ADC_pin);
-    int32_t current = (adc_voltage -2500)*5.405;
+    int32_t current = (adc_voltage +184)/(10.0/12)-2500;
     ESP_LOGI("ADC", "ADC%d:voltage:%ldcurrent%ld", ADC_pin, adc_voltage, current);
     return current;
 }
