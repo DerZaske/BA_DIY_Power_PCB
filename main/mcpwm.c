@@ -363,6 +363,10 @@ void configure_mcpwm_output(OutCombis out_combi) {
             phase_configurations[1].state = OFF;
             phase_configurations[2].state = Highside;
             break;
+        case OUT_UVW:
+            phase_configurations[0].state = Highside;
+            phase_configurations[1].state = Highside;
+            phase_configurations[2].state = Highside;
         default:
             break;
     }

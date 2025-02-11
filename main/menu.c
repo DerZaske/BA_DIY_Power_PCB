@@ -112,16 +112,17 @@ const char *mode_names[] = {
     };
 
  const char *OutCombi_names[]= {
-        "+U -V",
-        "+U -W",
-        "+V -W",
-        "+V -U",
-        "+W -U",
-        "+W -V",
-        " +U  ",
-        " +V  ",
-        " +W  ",
-        "ERROR"
+        "+U -V ",
+        "+U -W ",
+        "+V -W ",
+        "+V -U ",
+        "+W -U ",
+        "+W -V ",
+        " +U   ",
+        " +V   ",
+        " +W   ",
+        "+U+V+W",
+        "ERROR "
     };
 
 typedef enum {
@@ -132,10 +133,10 @@ typedef enum {
 } BridgeState;
 
 const char *state_names[] = {
-        "Active     ",
-        "Deaktive   ",
-        "UV         ",
-        "RFE set(OC)"
+        "Active   ",
+        "Deaktive ",
+        "UV       ",
+        "RFE (OC) "
     };
 
 
@@ -180,7 +181,11 @@ static void check_button_pressed(){
                     enc_in_counter=0;
                     break;
                 case 4:
-                    current_out_combi =(current_out_combi+1)%6;
+                if (current_mode==DC_BRUSHED_MODE){
+                    current_out_combi =(current_out_combi+1)%10;
+                    }else{
+                        current_out_combi =(current_out_combi+1)%6;  
+                    }
                     stop_mcpwm_output();
                     configure_mcpwm_output(current_out_combi);
                     ShouldState = false;

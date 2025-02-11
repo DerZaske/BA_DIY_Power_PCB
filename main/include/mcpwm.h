@@ -18,6 +18,7 @@ typedef enum {
     OUT_U,
     OUT_V,
     OUT_W,
+    OUT_UVW,
     COMBI_COUNT
 }OutCombis;
 
