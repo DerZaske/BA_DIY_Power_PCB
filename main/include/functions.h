@@ -1,46 +1,24 @@
 // functions.h
-#include <stdio.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "driver/gpio.h"
-#include "esp_log.h"
-#include "sdkconfig.h"
-#include "driver/ledc.h"
-#include <string.h>
-#include <stdlib.h>
-#include "parsed_pins.h"
-#include "esp_adc/adc_cali.h"
-#include "esp_adc/adc_cali_scheme.h"
+#ifndef FUNCTIONS_H
+#define FUNCTIONS_H
+
+
 #include "ssd1306.h"
-#include "esp_adc/adc_oneshot.h"
-#define HIN_U_CH 0
-#define HIN_V_CH 1
-#define HIN_W_CH 2
+#include <stdbool.h>
+#include "mcpwm.h"
+typedef enum {
+    HALL_000 = 0b000, // Ungültiger Zustand
+    HALL_001 = 0b001,
+    HALL_010 = 0b010,
+    HALL_011 = 0b011,
+    HALL_100 = 0b100,
+    HALL_101 = 0b101,
+    HALL_110 = 0b110,
+    HALL_111 = 0b111  // Ungültiger Zustand
+} HallState;
 
-#ifndef MY_COMPONENT_H
-#define MY_COMPONENT_H
-extern adc_cali_handle_t cali_handle;
-
-// Deklaration der Funktion, die in my_component.c implementiert ist
-void configure_GPIO_dir(const char *TAG);
-adc_oneshot_unit_handle_t configure_ADC1();
-uint32_t read_voltage(adc_oneshot_unit_handle_t adc1_handle, int channel);
-uint32_t get_voltage_in(adc_oneshot_unit_handle_t adc1_handle);
-uint32_t get_torque(adc_oneshot_unit_handle_t adc1_handle);
-int32_t get_current_ASC712(adc_oneshot_unit_handle_t adc1_handle, int ADC_pin);
-int32_t get_current_bridge(adc_oneshot_unit_handle_t adc1_handle, int ADC_pin);
-void set_PWM_Timer();
-void set_PWM();
-void pwmStart(int PWM_CH,int Duty);
-void pwmStop(int PWM_CH);
-void pwmStopAll();
-void U_V_start(int duty);
-void V_U_start(int duty);
-void U_W_start(int duty);
-void W_U_start(int duty);
-void V_W_start(int duty);
-void W_V_start(int duty);
-void parse_3pins(const char *TAG, const char *pin_string, int *pins);
-SSD1306_t *configure_OLED(const char *TAG);
-
-#endif // MY_COMPONENT_H
+bool get_Hall(int HallSensorGPIO);
+SSD1306_t *configure_OLED_old();
+HallState get_Hall_Combi();
+OutCombis get_output_combination(HallState hall_state);
+#endif

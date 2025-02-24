@@ -10,7 +10,8 @@
 CMakeFiles/
 cmake-build-debug/
 build/
-
+sdkconfig
+sdkconfig.old
 CMakeCache.txt
 cmake-build-debug/.ninja_deps
 cmake-build-debug/.ninja_log
